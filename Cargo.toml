@@ -1,5 +1,5 @@
 [package]
-name = "hello-rust"
+name = "rusted-voxels"
 version = "0.1.0"
 edition = "2024"
 
@@ -12,3 +12,6 @@ winit = { version = "0.30", features = ["android-native-activity"] }
 #winit = "0.30.13"
 log = "0.4"
 env_logger = "0.10"
+glfw = "0.62.0"
+gl = "0.14.0"
+glam = "0.33"
