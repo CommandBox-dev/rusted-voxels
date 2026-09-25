@@ -2,7 +2,7 @@ use glam::{Vec3};
 
 use crate::engine::{chunk::{self, Chunk}};
 
-fn cast_ray(origin: Vec3, dir: Vec3, length: f32, chunk: Chunk) -> RayResult {
+pub fn cast_ray(origin: Vec3, dir: Vec3, length: f32, chunk: &Chunk) -> RayResult {
     // direction needs to be normalized
     // chunk is passed as an parameter for now
     let mut result: RayResult = RayResult::new();
@@ -44,7 +44,7 @@ fn cast_ray(origin: Vec3, dir: Vec3, length: f32, chunk: Chunk) -> RayResult {
 
         if (block > 0) {
 
-            result.hit = 1;
+            result.hit = true;
             result.hit_position.x = x as f32;
             result.hit_position.y = y as f32;
             result.hit_position.z = z as f32;
@@ -91,18 +91,18 @@ fn cast_ray(origin: Vec3, dir: Vec3, length: f32, chunk: Chunk) -> RayResult {
     result
 }
 
-struct RayResult {
-    hit: u32,
-    hit_position: Vec3,
-    hit_normal: Vec3,
-    hit_block: u32,
-    travel_distance: f32
+pub struct RayResult {
+    pub hit: bool,
+    pub hit_position: Vec3,
+    pub hit_normal: Vec3,
+    pub hit_block: u32,
+    pub travel_distance: f32
 }
 
 impl RayResult {
     fn new() -> RayResult {
         Self {
-            hit: 0,
+            hit: false,
             hit_position: Vec3::new(0.0, 0.0, 0.0),
             hit_normal: Vec3::new(0.0, 0.0, 0.0),
             hit_block: 0,

@@ -2,9 +2,9 @@
 
 mod engine;
 
-use crate::engine::{chunk::{self, Chunk}, shader::load_shader};
+use crate::engine::{chunk::{self, Chunk}, raycast, shader::load_shader};
 
-use glfw::{Action, Context, Key};
+use glfw::{Action, Context, Key, MouseButton};
 use glam::{Mat4, Vec2, Vec3};
 
 
@@ -78,8 +78,10 @@ fn main() {
     let mut last_mouse_y = height as f32 / 2.0;
     let mut first_mouse = true;
 
+    let mut chunk = Chunk::new(0, 0);
+
     // cube
-    //let model = Mat4::IDENTITY;
+    let model = Mat4::IDENTITY;
     let mut vao = 0;
     let mut vbo = 0;
     
@@ -97,6 +99,7 @@ fn main() {
 
     window.make_current();
     window.set_key_polling(true);
+    window.set_mouse_button_polling(true);
     window.set_cursor_pos_polling(true);
     window.set_cursor_mode(glfw::CursorMode::Disabled);
 
@@ -106,6 +109,8 @@ fn main() {
         .get_proc_address(symbol)
         .map_or(std::ptr::null(), |p| p as *const _)
     });
+
+    let mesh = chunk.build_mesh();
 
     unsafe {
         gl::Viewport(0, 0, width as i32, height as i32);
@@ -117,13 +122,22 @@ fn main() {
         gl::BindVertexArray(vao);
 
         gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
-        
+
+        gl::BufferData(
+            gl::ARRAY_BUFFER,
+            (mesh.len() as usize * std::mem::size_of::<f32>()) as isize,
+            mesh.as_ptr() as *const _,
+             gl::STATIC_DRAW
+        );
+
+        /*
         gl::BufferData(
             gl::ARRAY_BUFFER,
             (vertices.len() * std::mem::size_of::<f32>()) as isize,
             vertices.as_ptr() as *const _, gl::STATIC_DRAW);
-        
+        */
         gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, 3 * std::mem::size_of::<f32>() as i32, std::ptr::null());
+        
         
         gl::EnableVertexAttribArray(0);
         gl::BindVertexArray(0);
@@ -152,7 +166,7 @@ fn main() {
         delta = now.duration_since(time_last_frame).as_secs_f32();
 
         if time_acc > 1.0 {
-            println!("{}", frame_acc);
+            //println!("{}", frame_acc);
             frame_acc = 0;
             time_acc = 0.0;
         }
@@ -160,10 +174,52 @@ fn main() {
 
         // handle keybord input
         for (_, event) in glfw::flush_messages(&events) {
+            //println!("{:?}", event);
             match event{
 
                 glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
                     window.set_should_close(true);
+                }
+
+                glfw::WindowEvent::MouseButton(MouseButton::Left, Action::Press, _) => {
+                    //println!("{:?}, {:?}", button, action);
+                    let result = raycast::cast_ray(camera.position, camera.front, 10.0, &chunk);
+                    if result.hit {
+                        &chunk.set_block(
+                            result.hit_position.x as i32,
+                            result.hit_position.y as i32,
+                            result.hit_position.z as i32,
+                            0
+                        );
+                        //println!("{}", result.hit_position);
+                        let mesh = chunk.build_mesh();
+                        unsafe {
+
+
+                            gl::DeleteVertexArrays(1, &vao);
+                            gl::DeleteBuffers(1, &vbo);
+
+                            gl::GenVertexArrays(1, &mut vao);
+                            gl::GenBuffers(1, &mut vbo);
+
+                            gl::BindVertexArray(vao);
+
+                            gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
+
+                            gl::BufferData(
+                                gl::ARRAY_BUFFER,
+                                (mesh.len() as usize * std::mem::size_of::<f32>()) as isize,
+                                mesh.as_ptr() as *const _,
+                                    gl::STATIC_DRAW
+                            );
+
+                            gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, 3 * std::mem::size_of::<f32>() as i32, std::ptr::null());
+
+
+                            gl::EnableVertexAttribArray(0);
+                            gl::BindVertexArray(0);
+                        }
+                    }
                 }
 
                 glfw::WindowEvent::CursorPos(x, y) => {
@@ -193,7 +249,7 @@ fn main() {
 
                     camera.pitch = camera.pitch.clamp(-89.0, 89.0);
                     camera.recalculate_vectors();
-                    println!("mmx: {}, mmy: {}", x_offset, y_offset);
+                    //println!("mmx: {}, mmy: {}", x_offset, y_offset);
                 }
 
                 _ => {}
@@ -226,7 +282,7 @@ fn main() {
             left = 0;
         }
 
-        let input = Vec2::new((front - back) as f32, (right - left) as f32); // moves twice as fast when moving diagonal for now
+        let input = Vec2::new((front - back) as f32, (right - left) as f32);
         let speed = 5.0;
         camera.position += camera.front * input.x * delta * speed;
         camera.position += camera.right * input.y * delta * speed;
@@ -235,7 +291,7 @@ fn main() {
         
         // recalculate the model matrix of the rotating cube
         cube_rot += delta;
-        let model = Mat4::from_rotation_y(cube_rot) * Mat4::from_rotation_x(cube_rot * 0.5);
+        //let model = Mat4::from_rotation_y(cube_rot) * Mat4::from_rotation_x(cube_rot * 0.5);
         
         unsafe {
             gl::ClearColor(0.3, 0.3, 0.3, 1.0);
@@ -250,7 +306,7 @@ fn main() {
             gl::UseProgram(base_shader);
             gl::BindVertexArray(vao);
             
-            gl::DrawArrays(gl::TRIANGLES, 0, 36);
+            gl::DrawArrays(gl::TRIANGLES, 0, (mesh.len() / 3) as i32);
             
             gl::BindVertexArray(0);
         }
