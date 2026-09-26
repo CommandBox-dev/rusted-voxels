@@ -1,10 +1,11 @@
 use crate::engine::{chunk::{self, Chunk}, chunk_renderer, world};
 
-pub const RENDER_DISTANCE: u32 = 3;
+pub const RENDER_DISTANCE: u32 = 15;
+pub const RENDER_AREA: u32 = RENDER_DISTANCE * RENDER_DISTANCE;
 
 pub struct World {
     // chunk storage
-    pub chunks: [Option<Chunk>; (RENDER_DISTANCE * RENDER_DISTANCE) as usize], //Vec<Chunk>,
+    pub chunks: Box<[Option<Chunk>; (RENDER_DISTANCE * RENDER_DISTANCE) as usize]>, //Vec<Chunk>,
     circvec_start_x: u32,
     circvec_start_z: u32,
     chunks_x_offset: i32,
@@ -14,8 +15,8 @@ pub struct World {
 impl World {
     pub fn new() -> Self {
 
-        let mut chunks: [Option<Chunk>; (RENDER_DISTANCE * RENDER_DISTANCE) as usize]
-         = [None; (RENDER_DISTANCE * RENDER_DISTANCE) as usize];
+        let mut chunks: Box<[Option<Chunk>; RENDER_AREA as usize]> =
+            Box::new(std::array::from_fn(|_| None));
 
         for x in 0..RENDER_DISTANCE {
             for z in 0..RENDER_DISTANCE {
@@ -60,9 +61,7 @@ impl World {
         let lx = gx % 16;
         let lz = gz % 16;
 
-        let chunk = self.get_chunk(cx, cz);
-
-        if let Some(chunk) = chunk {
+        if let Some(chunk) = self.get_chunk(cx, cz) {
             return chunk.get_block(lx, gy, lz);
         } else {
             return 0;
@@ -75,12 +74,10 @@ impl World {
         let lx = gx % 16;
         let lz = gz % 16;
 
-        let chunk = self.get_chunk(cx, cz);
-
-        if let Some(mut chunk) = chunk {
+        if let Some(chunk) = self.get_chunk(cx, cz) {
             chunk.set_block(lx, gy, lz, block);
             let mesh = chunk.build_mesh();
-            chunk_renderer::upload_chunk_mesh(&mut chunk, mesh);
+            chunk_renderer::upload_chunk_mesh(chunk, mesh);
         }
     }
 }

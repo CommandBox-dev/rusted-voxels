@@ -2,7 +2,7 @@
 
 mod engine;
 
-use crate::engine::{chunk::{self, Chunk}, chunk_renderer::{self, render_chunks}, raycast, shader::load_shader, world};
+use crate::engine::{chunk::{self, CHUNK_WIDTH, Chunk}, chunk_renderer::{self, render_chunks}, raycast, shader::load_shader, world};
 use crate::engine::world::World;
 
 use glfw::{Action, Context, Key, MouseButton, ffi::glfwGetFramebufferSize};
@@ -45,8 +45,7 @@ fn main() {
     window.set_mouse_button_polling(true);
     window.set_cursor_pos_polling(true);
     window.set_cursor_mode(glfw::CursorMode::Disabled);
-
-    // load opengl function pointers.
+    
     gl::load_with(|symbol| {
         window
         .get_proc_address(symbol)
@@ -56,7 +55,7 @@ fn main() {
     let (fb_width, fb_height) = window.get_framebuffer_size();
 
     let mut camera = engine::camera::Camera::new(
-        Vec3::new((world::RENDER_DISTANCE / 2) as f32, 258.0, (world::RENDER_DISTANCE / 2) as f32),
+        Vec3::new(((world::RENDER_DISTANCE / 2) * CHUNK_WIDTH as u32) as f32, 105.0, ((world::RENDER_DISTANCE / 2) * CHUNK_WIDTH as u32) as f32),
         180.0,
         0.0,
         fb_width as u32,
@@ -67,8 +66,8 @@ fn main() {
     unsafe {
         gl::Viewport(0, 0, fb_width, fb_height);
         gl::Enable(gl::DEPTH_TEST);
-        //gl::Enable(gl::CULL_FACE);
-        //gl::CullFace(gl::BACK);
+        gl::Enable(gl::CULL_FACE);
+        gl::CullFace(gl::BACK);
     }
 
     // load shader and get shader uniform locations

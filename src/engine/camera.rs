@@ -34,11 +34,11 @@ impl Camera {
             roll: 0.0,
             fov,
             near: 0.1,
-            far: 100.0,
+            far: 1000.0,
             viewport_width,
             viewport_height,
             view: glam::camera::rh::view::look_at_mat4(position, position + -Vec3::Z, Vec3::Y),
-            projection: glam::camera::rh::proj::directx::perspective(fov.to_radians(), (viewport_width as f32 / viewport_height as f32), 0.1, 100.0)
+            projection: glam::camera::rh::proj::directx::perspective(fov.to_radians(), (viewport_width as f32 / viewport_height as f32), 0.1, 1000.0)
         }
     }
 
