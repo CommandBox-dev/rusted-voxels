@@ -43,21 +43,29 @@ impl Camera {
     }
 
     pub fn recalculate_view(&mut self) {
-        self.view = glam::camera::rh::view::look_at_mat4(self.position, self.position + self.front, self.up);
+        self.view = glam::camera::rh::view::look_at_mat4(self.position, self.position + self.front, Vec3::Y);
     }
 
     pub fn recalculate_vectors(&mut self) {
-        // front
+        
         let yaw = self.yaw.to_radians();
         let pitch = self.pitch.to_radians();
 
+        // front
         self.front = Vec3::new(
-            yaw.cos() * pitch.cos(),
+            pitch.cos() * yaw.sin(),
             pitch.sin(),
-            yaw.sin() * pitch.cos()
+            pitch.cos() * yaw.cos()
         ).normalize();
 
-        // right
-        self.right = self.front.cross(self.up);
+        //right
+        self.right = Vec3::new(
+            yaw.cos(),
+            0.0,
+            -yaw.sin()
+        ).normalize();
+
+        // up
+        self.up = self.front.cross(self.right);
     }
 }

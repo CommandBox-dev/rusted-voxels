@@ -1,8 +1,8 @@
-use glam::{Vec3};
+use glam::{Vec3, IVec3};
 
-use crate::engine::{chunk::{self, Chunk}};
+use crate::engine::{chunk::{self, Chunk}, world::World};
 
-pub fn cast_ray(origin: Vec3, dir: Vec3, length: f32, chunk: &Chunk) -> RayResult {
+pub fn cast_ray(origin: Vec3, dir: Vec3, length: f32, world: &mut World) -> RayResult {
     // direction needs to be normalized
     // chunk is passed as an parameter for now
     let mut result: RayResult = RayResult::new();
@@ -40,30 +40,24 @@ pub fn cast_ray(origin: Vec3, dir: Vec3, length: f32, chunk: &Chunk) -> RayResul
 
     while (distance <= length) {
 
-        let block: u32 = chunk.get_block(x, y, z);
+        let block: u32 = world.get_block(x, y, z);
 
         if (block > 0) {
 
             result.hit = true;
-            result.hit_position.x = x as f32;
-            result.hit_position.y = y as f32;
-            result.hit_position.z = z as f32;
+            result.hit_position.x = x;
+            result.hit_position.y = y;
+            result.hit_position.z = z;
             result.travel_distance = distance;
             result.hit_block = block;
 
-            // determine face normal
+            // determine hit normal
             if (last_step_axis == 0) {
-                result.hit_normal.x = -step_x as f32;
-                result.hit_normal.y = 0.0;
-                result.hit_normal.z = 0.0;
+                result.hit_normal.x = -step_x;
             } else if (last_step_axis == 1) {
-                result.hit_normal.x = 0.0;
-                result.hit_normal.y = -step_y as f32;
-                result.hit_normal.z = 0.0;
+                result.hit_normal.y = -step_y;
             } else if (last_step_axis == 2) {
-                result.hit_normal.x = 0.0;
-                result.hit_normal.x = 0.0;
-                result.hit_normal.x = -step_z as f32;
+                result.hit_normal.z = -step_z;
             }
             return result;
         }
@@ -93,8 +87,8 @@ pub fn cast_ray(origin: Vec3, dir: Vec3, length: f32, chunk: &Chunk) -> RayResul
 
 pub struct RayResult {
     pub hit: bool,
-    pub hit_position: Vec3,
-    pub hit_normal: Vec3,
+    pub hit_position: IVec3,
+    pub hit_normal: IVec3,
     pub hit_block: u32,
     pub travel_distance: f32
 }
@@ -103,8 +97,8 @@ impl RayResult {
     fn new() -> RayResult {
         Self {
             hit: false,
-            hit_position: Vec3::new(0.0, 0.0, 0.0),
-            hit_normal: Vec3::new(0.0, 0.0, 0.0),
+            hit_position: IVec3::new(0, 0, 0),
+            hit_normal: IVec3::new(0, 0, 0),
             hit_block: 0,
             travel_distance: 0.0
         }

@@ -10,7 +10,8 @@ out vec3 color;
 
 void main()
 {
-    color = v_position * 0.5 + 0.5;
+    //color = v_position * 0.5 + 0.5;
+    color = mod(v_position, 1.2);
 
     gl_Position =
         u_projection *

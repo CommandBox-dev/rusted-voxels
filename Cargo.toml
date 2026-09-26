@@ -3,6 +3,11 @@ name = "rusted-voxels"
 version = "0.1.0"
 edition = "2024"
 
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+
 [dependencies]
 anyhow = "1.0"
 pollster = "1.0.1"

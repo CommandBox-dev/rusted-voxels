@@ -1,3 +1,5 @@
+use rand::Rng;
+
 pub static CHUNK_WIDTH: i32 = 16;
 pub static CHUNK_HEIGHT: i32 = 256;
 
@@ -54,10 +56,15 @@ const VERTICES: [f32; 108] = [
     -0.5, -0.5, -0.5
 ];
 
+#[derive(Clone, Copy)]
 pub struct Chunk {
-    x: i32,
-    z: i32,
-    block_data: [u32; CHUNK_VOLUME as usize]
+    pub x: i32,
+    pub z: i32,
+    block_data: [u32; CHUNK_VOLUME as usize],
+    // mesh
+    pub vao: u32,
+    pub vbo: u32,
+    pub vertex_count: u32,
 }   
 
 fn index(x: i32, y: i32, z: i32) -> usize {
@@ -67,10 +74,19 @@ fn index(x: i32, y: i32, z: i32) -> usize {
 impl Chunk {
 
     pub fn new(x: i32, z: i32) -> Self {
+
+        let mut array = [1; CHUNK_VOLUME as usize];
+        //for i in 0..CHUNK_VOLUME {
+        //    array[i as usize] = rand::random_range(0..=1);
+        //}
+
         Self {
             x,
             z,
-            block_data: [1; CHUNK_VOLUME as usize]
+            block_data: array,
+            vao: 0,
+            vbo: 0,
+            vertex_count: 0,
         }
     }
 
@@ -113,7 +129,6 @@ impl Chunk {
                             Chunk::add_face(&mut mesh, face, x, y, z);
                         }
                     }
-                    //println!("next_block, xyz: {}, {}, {}", x, y, z);
                 }
             }
         }
