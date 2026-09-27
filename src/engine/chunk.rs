@@ -6,61 +6,61 @@ pub static CHUNK_HEIGHT: i32 = 256;
 pub static CHUNK_AREA: i32 = CHUNK_WIDTH * CHUNK_WIDTH;
 pub static CHUNK_VOLUME: i32 = CHUNK_AREA * CHUNK_HEIGHT;
 
-const VERTICES: [f32; 108] = [
+const VERTICES: [f32; 108 + 72] = [
 
     // right
-    1.0, 0.0, 1.0,
-    1.0, 0.0, 0.0,
-    1.0, 1.0, 0.0,
+    1.0, 0.0, 1.0,   0.0, 0.0,
+    1.0, 0.0, 0.0,   1.0, 0.0,
+    1.0, 1.0, 0.0,   1.0, 1.0,
 
-    1.0, 0.0, 1.0,
-    1.0, 1.0, 0.0,
-    1.0, 1.0, 1.0,
+    1.0, 0.0, 1.0,   0.0, 0.0,
+    1.0, 1.0, 0.0,   1.0, 1.0,
+    1.0, 1.0, 1.0,   0.0, 1.0,
 
     // left
-    0.0, 0.0, 0.0,
-    0.0, 0.0, 1.0,
-    0.0, 1.0, 1.0,
+    0.0, 0.0, 0.0,   0.0, 0.0,
+    0.0, 0.0, 1.0,   1.0, 0.0,
+    0.0, 1.0, 1.0,   1.0, 1.0,
 
-    0.0, 0.0, 0.0,
-    0.0, 1.0, 1.0,
-    0.0, 1.0, 0.0,
+    0.0, 0.0, 0.0,   0.0, 0.0,
+    0.0, 1.0, 1.0,   1.0, 1.0,
+    0.0, 1.0, 0.0,   0.0, 1.0,
 
     // top
-    0.0, 1.0, 1.0,
-    1.0, 1.0, 1.0,
-    1.0, 1.0, 0.0,
+    0.0, 1.0, 1.0,   0.0, 0.0,
+    1.0, 1.0, 1.0,   1.0, 0.0,
+    1.0, 1.0, 0.0,   1.0, 1.0,
 
-    0.0, 1.0, 1.0,
-    1.0, 1.0, 0.0,
-    0.0, 1.0, 0.0,
+    0.0, 1.0, 1.0,   0.0, 0.0,
+    1.0, 1.0, 0.0,   1.0, 1.0,
+    0.0, 1.0, 0.0,   0.0, 1.0,
 
     // bottom
-    0.0, 0.0, 0.0,
-    1.0, 0.0, 0.0,
-    1.0, 0.0, 1.0,
+    0.0, 0.0, 0.0,   0.0, 0.0,
+    1.0, 0.0, 0.0,   1.0, 0.0,
+    1.0, 0.0, 1.0,   1.0, 1.0,
 
-    0.0, 0.0, 0.0,
-    1.0, 0.0, 1.0,
-    0.0, 0.0, 1.0,
+    0.0, 0.0, 0.0,   0.0, 0.0,
+    1.0, 0.0, 1.0,   1.0, 1.0,
+    0.0, 0.0, 1.0,   0.0, 1.0,
 
     // front
-    0.0, 0.0, 1.0,
-    1.0, 0.0, 1.0,
-    1.0, 1.0, 1.0,
+    0.0, 0.0, 1.0,   0.0, 0.0,
+    1.0, 0.0, 1.0,   1.0, 0.0,
+    1.0, 1.0, 1.0,   1.0, 1.0,
 
-    0.0, 0.0, 1.0,
-    1.0, 1.0, 1.0,
-    0.0, 1.0, 1.0,
+    0.0, 0.0, 1.0,   0.0, 0.0,
+    1.0, 1.0, 1.0,   1.0, 1.0,
+    0.0, 1.0, 1.0,   0.0, 1.0,
 
     // back
-    1.0, 0.0, 0.0,
-    0.0, 0.0, 0.0,
-    0.0, 1.0, 0.0,
+    1.0, 0.0, 0.0,   0.0, 0.0,
+    0.0, 0.0, 0.0,   1.0, 0.0,
+    0.0, 1.0, 0.0,   1.0, 1.0,
 
-    1.0, 0.0, 0.0,
-    0.0, 1.0, 0.0,
-    1.0, 1.0, 0.0,
+    1.0, 0.0, 0.0,   0.0, 0.0,
+    0.0, 1.0, 0.0,   1.0, 1.0,
+    1.0, 1.0, 0.0,   0.0, 1.0,
 ];
 
 
@@ -86,6 +86,7 @@ impl Chunk {
         //for i in 0..CHUNK_VOLUME {
         //   block_data[i as usize] = rand::random_range(0..=1);
         //}
+
         for x in 0..CHUNK_WIDTH {
             for y in 0..CHUNK_HEIGHT {
                 for z in 0..CHUNK_WIDTH {
@@ -126,7 +127,7 @@ impl Chunk {
         self.block_data[index(x, y, z)]
     }
 
-    pub fn build_mesh(&self) -> Vec<f32> {
+    pub fn build_mesh(&mut self) -> Vec<f32> {
 
         let mut mesh = Vec::new();
 
@@ -148,6 +149,7 @@ impl Chunk {
                 }
             }
         }
+        self.vertex_count = (mesh.len() / 5) as u32;
         mesh
     }
 
@@ -169,9 +171,14 @@ impl Chunk {
         let end = start + 6;
 
         for i in start..end {
-            mesh.push(VERTICES[(i * 3) as usize] + x as f32);
-            mesh.push(VERTICES[(i * 3 + 1) as usize] + y as f32);
-            mesh.push(VERTICES[(i * 3 + 2) as usize] + z as f32);
+            let vertex_sub_pos = (i * 5) as usize; // vec3 pos + vec2 uv
+            // position
+            mesh.push(VERTICES[vertex_sub_pos] + x as f32);
+            mesh.push(VERTICES[vertex_sub_pos + 1] + y as f32);
+            mesh.push(VERTICES[vertex_sub_pos + 2] + z as f32);
+            // uv
+            mesh.push(VERTICES[vertex_sub_pos + 3]);
+            mesh.push(VERTICES[vertex_sub_pos + 4]);
         }
     }
 }

@@ -11,7 +11,7 @@ pub fn upload_chunk_mesh(chunk: &mut Chunk, mesh: Vec<f32>) {
         if chunk.vao != 0 {gl::DeleteVertexArrays(1, &chunk.vao);}
         if chunk.vbo != 0 {gl::DeleteBuffers(1, &chunk.vbo);}
 
-        chunk.vertex_count = (mesh.len() / 3) as u32;
+        chunk.vertex_count = (mesh.len() / 5) as u32;
 
         gl::GenVertexArrays(1, &mut chunk.vao);
         gl::GenBuffers(1, &mut chunk.vbo);
@@ -20,6 +20,7 @@ pub fn upload_chunk_mesh(chunk: &mut Chunk, mesh: Vec<f32>) {
         gl::BindBuffer(gl::ARRAY_BUFFER, chunk.vbo);
 
         let float_size = std::mem::size_of::<f32>();
+        let stride = 5 * float_size as i32; // pos, uv
 
         gl::BufferData(
             gl::ARRAY_BUFFER,
@@ -33,11 +34,21 @@ pub fn upload_chunk_mesh(chunk: &mut Chunk, mesh: Vec<f32>) {
             3,
             gl::FLOAT,
             gl::FALSE,
-            3 * float_size as i32,
+            stride,
             std::ptr::null()
         );
-        
         gl::EnableVertexAttribArray(0);
+
+        gl::VertexAttribPointer(
+            1,
+            2,
+            gl::FLOAT,
+            gl::FALSE,
+            stride,
+            (3 * float_size) as *const _
+        );
+        gl::EnableVertexAttribArray(1);
+        
         gl::BindVertexArray(0);
     }
 }

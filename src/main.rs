@@ -2,13 +2,12 @@
 
 mod engine;
 
-use crate::engine::{chunk::{self, CHUNK_WIDTH, Chunk}, chunk_renderer::{self, render_chunks}, raycast, shader::load_shader, world};
+use crate::engine::{chunk::{self, CHUNK_WIDTH, Chunk}, chunk_renderer::{self, render_chunks}, raycast, shader::load_shader, texture::{bind, load_image}, world};
 use crate::engine::world::World;
 
 use glfw::{Action, Context, Key, MouseButton, ffi::glfwGetFramebufferSize};
 use glam::{Mat4, Vec2, Vec3};
 use rand::rand_core::utils::Word;
-
 
 fn main() {
 
@@ -45,7 +44,7 @@ fn main() {
     window.set_mouse_button_polling(true);
     window.set_cursor_pos_polling(true);
     window.set_cursor_mode(glfw::CursorMode::Disabled);
-    
+
     gl::load_with(|symbol| {
         window
         .get_proc_address(symbol)
@@ -70,8 +69,8 @@ fn main() {
         gl::CullFace(gl::BACK);
     }
 
-    // load shader and get shader uniform locations
-    let base_shader = load_shader("res/shaders/basic.vert", "res/shaders/basic.frag");
+    let base_shader = load_shader("./res/shaders/basic.vert", "./res/shaders/basic.frag");
+    let base_texture = load_image("./res/textures/texture_copy.png");
 
     let model_loc = unsafe {
         gl::GetUniformLocation(base_shader, c"u_model".as_ptr())
@@ -83,6 +82,10 @@ fn main() {
 
     let projection_loc = unsafe {
         gl::GetUniformLocation(base_shader, c"u_projection".as_ptr())
+    };
+
+    let texture_loc = unsafe {
+        gl::GetUniformLocation(base_shader, c"baseTexture".as_ptr())
     };
 
     let mut world = World::new();
@@ -213,10 +216,13 @@ fn main() {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
             
             gl::UseProgram(base_shader);
+            bind(base_texture, 0);
             
             // bind camera matrices
             gl::UniformMatrix4fv(view_loc, 1, gl::FALSE, camera.view.to_cols_array().as_ptr());
             gl::UniformMatrix4fv(projection_loc, 1, gl::FALSE, camera.projection.to_cols_array().as_ptr());
+
+            gl::Uniform1i(texture_loc, 0);
 
             chunk_renderer::render_chunks(&mut world, model_loc);
             

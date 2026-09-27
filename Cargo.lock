@@ -2226,6 +2226,7 @@ dependencies = [
  "gl",
  "glam",
  "glfw",
+ "image",
  "log",
  "pollster",
  "rand 0.10.2",

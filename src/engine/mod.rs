@@ -5,3 +5,4 @@ pub mod raycast;
 pub mod window;
 pub mod world;
 pub mod chunk_renderer;
+pub mod texture;
