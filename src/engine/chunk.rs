@@ -1,5 +1,7 @@
 use rand::Rng;
 
+use crate::engine::block_model::BlockModel;
+
 pub static CHUNK_WIDTH: i32 = 16;
 pub static CHUNK_HEIGHT: i32 = 256;
 
@@ -63,6 +65,14 @@ const VERTICES: [f32; 108 + 72] = [
     1.0, 1.0, 0.0,   0.0, 1.0,
 ];
 
+const NORMAL_LIGHT: [f32; 6] = [
+    0.8, // right
+    0.8, // left
+    1.0, // top
+    0.5, // bottom
+    0.65, // front
+    0.65, // back
+];
 
 pub struct Chunk {
     pub x: i32,
@@ -83,15 +93,12 @@ impl Chunk {
     pub fn new(x: i32, z: i32) -> Self {
 
         let mut block_data = Box::new([0; CHUNK_VOLUME as usize]);
-        //for i in 0..CHUNK_VOLUME {
-        //   block_data[i as usize] = rand::random_range(0..=1);
-        //}
 
         for x in 0..CHUNK_WIDTH {
             for y in 0..CHUNK_HEIGHT {
                 for z in 0..CHUNK_WIDTH {
                     if y < 100 { 
-                        block_data[index(x, y, z)] = 1;
+                        block_data[index(x, y, z)] = rand::random_range(1..=2);
                     }
                 }
             }
@@ -127,7 +134,8 @@ impl Chunk {
         self.block_data[index(x, y, z)]
     }
 
-    pub fn build_mesh(&mut self) -> Vec<f32> {
+    pub fn build_mesh(&mut self, block_models: &[BlockModel; 2]) -> Vec<f32> {
+        // the passing of the block model 
 
         let mut mesh = Vec::new();
 
@@ -143,13 +151,13 @@ impl Chunk {
 
                     for face in 0..6 {
                         if mask & (1 << face) != 0 {
-                            Chunk::add_face(&mut mesh, face, x, y, z);
+                            Chunk::add_face(&mut mesh, face, x, y, z, block, &block_models);
                         }
                     }
                 }
             }
         }
-        self.vertex_count = (mesh.len() / 5) as u32;
+        self.vertex_count = (mesh.len() / 6) as u32;
         mesh
     }
 
@@ -166,19 +174,34 @@ impl Chunk {
         mask
     }
 
-    fn add_face(mesh: &mut Vec<f32>, face: u32, x: i32, y: i32, z: i32) {
+    fn add_face(mesh: &mut Vec<f32>, face: u32, x: i32, y: i32, z: i32, block: u32, block_models: &[BlockModel; 2]) {
         let start = 6 * face; // 6 vertices (two triangles) * face index
-        let end = start + 6;
+        let b = block as usize - 1;
 
-        for i in start..end {
-            let vertex_sub_pos = (i * 5) as usize; // vec3 pos + vec2 uv
-            // position
-            mesh.push(VERTICES[vertex_sub_pos] + x as f32);
-            mesh.push(VERTICES[vertex_sub_pos + 1] + y as f32);
-            mesh.push(VERTICES[vertex_sub_pos + 2] + z as f32);
-            // uv
-            mesh.push(VERTICES[vertex_sub_pos + 3]);
-            mesh.push(VERTICES[vertex_sub_pos + 4]);
-        }
+        // triangle 1 (lower)
+        Chunk::add_vertex(mesh, x, y, z, block_models[b].uv_min_x, block_models[b].uv_min_y, face, start);
+        Chunk::add_vertex(mesh, x, y, z, block_models[b].uv_max_x, block_models[b].uv_min_y, face, start + 1);
+        Chunk::add_vertex(mesh, x, y, z, block_models[b].uv_max_x, block_models[b].uv_max_y, face, start + 2);
+        // triangle 2 (upper)
+        Chunk::add_vertex(mesh, x, y, z, block_models[b].uv_min_x, block_models[b].uv_min_y, face, start + 3);
+        Chunk::add_vertex(mesh, x, y, z, block_models[b].uv_max_x, block_models[b].uv_max_y, face, start + 4);
+        Chunk::add_vertex(mesh, x, y, z, block_models[b].uv_min_x, block_models[b].uv_max_y, face, start + 5);
+
+        /*Chunk::add_vertex(mesh, x, y, z, 1.0, 0.5, face, start + 3);
+        Chunk::add_vertex(mesh, x, y, z, 0.5, 0.5, face, start + 4);
+        Chunk::add_vertex(mesh, x, y, z, 0.5, 0.0, face, start + 5);*/
+    }
+
+    fn add_vertex(mesh: &mut Vec<f32>, x: i32, y: i32, z: i32, u: f32, v: f32, face: u32, vertex: u32) {
+        let vertex_sub_pos = (vertex * 5) as usize; // vec3 pos + vec2 uv (uv is replaced now but still in sample mesh data)
+        // position
+        mesh.push(VERTICES[vertex_sub_pos] + x as f32);
+        mesh.push(VERTICES[vertex_sub_pos + 1] + y as f32);
+        mesh.push(VERTICES[vertex_sub_pos + 2] + z as f32);
+        // uv
+        mesh.push(u);
+        mesh.push(v);
+        // light
+        mesh.push(NORMAL_LIGHT[face as usize]);
     }
 }

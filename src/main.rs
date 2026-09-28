@@ -2,8 +2,12 @@
 
 mod engine;
 
-use crate::engine::{chunk::{self, CHUNK_WIDTH, Chunk}, chunk_renderer::{self, render_chunks}, raycast, shader::load_shader, texture::{bind, load_image}, world};
-use crate::engine::world::World;
+use crate::engine::*;
+use crate::engine::chunk::*;
+use crate::engine::world::*;
+use crate::engine::shader::*;
+use crate::engine::texture::*;
+use crate::engine::block_model::*;
 
 use glfw::{Action, Context, Key, MouseButton, ffi::glfwGetFramebufferSize};
 use glam::{Mat4, Vec2, Vec3};
@@ -70,7 +74,22 @@ fn main() {
     }
 
     let base_shader = load_shader("./res/shaders/basic.vert", "./res/shaders/basic.frag");
-    let base_texture = load_image("./res/textures/texture_copy.png");
+    //let base_texture = load_texture_from_path("./res/textures/texture.png");
+    let texture_atlas = load_texture_atlas("./res/textures");
+    let base_texture = texture_atlas.id;
+
+    let block_one_uv = texture_atlas.search_tile(String::from("wall"));
+    let block_two_uv = texture_atlas.search_tile(String::from("texture"));
+    let atlas_tile_aspect = 1.0 / texture_atlas.tiles_per_row as f32;
+
+    println!("uv_b1: {}, {}",  block_one_uv.0, block_one_uv.1);
+    println!("uv_b2: {}, {}",  block_two_uv.0, block_two_uv.1);
+    println!("tile_aspect: {}", atlas_tile_aspect);
+
+    let block_models = [
+        BlockModel::new(block_one_uv.0, block_one_uv.1, block_one_uv.0 + atlas_tile_aspect, block_one_uv.1 + atlas_tile_aspect),
+        BlockModel::new(block_two_uv.0, block_two_uv.1, block_two_uv.0 + atlas_tile_aspect, block_two_uv.1 + atlas_tile_aspect),
+    ];
 
     let model_loc = unsafe {
         gl::GetUniformLocation(base_shader, c"u_model".as_ptr())
@@ -88,7 +107,7 @@ fn main() {
         gl::GetUniformLocation(base_shader, c"baseTexture".as_ptr())
     };
 
-    let mut world = World::new();
+    let mut world = World::new(&block_models);
     
     // game loop
     while !window.should_close() {
@@ -122,7 +141,8 @@ fn main() {
                             result.hit_position.x,
                             result.hit_position.y,
                             result.hit_position.z,
-                            0
+                            0,
+                            &block_models
                         );
                     }
                 }
@@ -135,7 +155,8 @@ fn main() {
                             result.hit_position.x + result.hit_normal.x,
                             result.hit_position.y + result.hit_normal.y,
                             result.hit_position.z + result.hit_normal.z,
-                            2
+                            2,
+                            &block_models
                         );
                     }
                 }

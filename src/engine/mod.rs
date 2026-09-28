@@ -6,3 +6,4 @@ pub mod window;
 pub mod world;
 pub mod chunk_renderer;
 pub mod texture;
+pub mod block_model;

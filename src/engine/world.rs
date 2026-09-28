@@ -1,4 +1,4 @@
-use crate::engine::{chunk::{self, Chunk}, chunk_renderer, world};
+use crate::engine::{block_model::BlockModel, chunk::{self, Chunk}, chunk_renderer, world};
 
 pub const RENDER_DISTANCE: u32 = 15;
 pub const RENDER_AREA: u32 = RENDER_DISTANCE * RENDER_DISTANCE;
@@ -13,7 +13,7 @@ pub struct World {
 }
 
 impl World {
-    pub fn new() -> Self {
+    pub fn new(block_models: &[BlockModel; 2]) -> Self {
 
         let mut chunks: Box<[Option<Chunk>; RENDER_AREA as usize]> =
             Box::new(std::array::from_fn(|_| None));
@@ -29,7 +29,7 @@ impl World {
                 let index = World::chunk_index(x as i32, z as i32);
 
                 if let Some(chunk) = chunks[index].as_mut() {
-                    let mesh = chunk.build_mesh();
+                    let mesh = chunk.build_mesh(block_models);
                     chunk_renderer::upload_chunk_mesh(chunk, mesh);
                 }
             }
@@ -68,7 +68,7 @@ impl World {
         }
     }
 
-    pub fn set_block(&mut self, gx: i32, gy: i32, gz: i32, block: u32) {
+    pub fn set_block(&mut self, gx: i32, gy: i32, gz: i32, block: u32, block_models: &[BlockModel; 2]) {
         let cx = gx / 16;
         let cz = gz / 16;
         let lx = gx % 16;
@@ -76,7 +76,7 @@ impl World {
 
         if let Some(chunk) = self.get_chunk(cx, cz) {
             chunk.set_block(lx, gy, lz, block);
-            let mesh = chunk.build_mesh();
+            let mesh = chunk.build_mesh(block_models);
             chunk_renderer::upload_chunk_mesh(chunk, mesh);
         }
     }
