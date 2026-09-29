@@ -110,12 +110,15 @@ impl World {
         if index == u32::MAX {return;}
 
         if let Some(chunk) = self.get_chunk_mut_from_index(index) {
-            chunk.set_block(lx, gy, lz, block);
+            let replaced_block = chunk.set_block_and_get(lx, gy, lz, block);
+
+            if replaced_block == 3 {
+                self.fill_circle(gx, gy, gz, 5, vec![0]);
+            }
 
             let mut place_pos = IVec3::new(gx, gy, gz);
             
             self.mark_chunk_area_dirty(place_pos, place_pos);
-            //self.mark_chunk_dirty(index);
         }
     }
 
@@ -138,7 +141,10 @@ impl World {
 
         for x in cx..=mcx {
             for z in cz..=mcz {
-                self.dirty_chunks.push(World::chunk_index(x, z));
+                let index = World::chunk_index(x, z);
+                if !self.is_in_dirty_queue(index) {
+                    self.dirty_chunks.push(index);
+                }
             }
         }
     }
@@ -154,5 +160,51 @@ impl World {
                 chunk_renderer::upload_chunk_mesh(chunk, mesh);
             }
         }
+    }
+
+    pub fn fill_circle(&mut self, gx: i32, gy: i32, gz: i32, radius: u32, fill_blocks: Vec<u32>) {
+        
+        if fill_blocks.len() > 1 {
+            for sx in gx - radius as i32..gx + radius as i32 {
+                for sy in gy - radius as i32..gy + radius as i32 {
+                    for sz in gz - radius as i32..gz + radius as i32 {
+
+                        let dx = sx - gx;
+                        let dy = sy - gy;
+                        let dz = sz - gz;
+
+                        if (dx*dx + dy*dy + dz*dz <= (radius*radius) as i32 ) {
+                            self.set_block(sx, sy, sz, fill_blocks[rand::random_range(0..fill_blocks.len())]);
+                        }
+
+                    }
+                }
+            }
+        } else {
+            // unessesary optimization...
+            for sx in gx - radius as i32..gx + radius as i32 {
+                for sy in gy - radius as i32..gy + radius as i32 {
+                    for sz in gz - radius as i32..gz + radius as i32 {
+
+                        let dx = sx - gx;
+                        let dy = sy - gy;
+                        let dz = sz - gz;
+
+                        if (dx*dx + dy*dy + dz*dz <= (radius*radius) as i32 ) {
+                            let block = self.get_block(sx, sy, sz);
+                            self.set_block(sx, sy, sz, fill_blocks[0]);
+                        }
+
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn is_in_dirty_queue(&self, index: u32) -> bool {
+        for i in 0..self.dirty_chunks.len() {
+            if self.dirty_chunks[i] == index {return true;}
+        }
+        false
     }
 }

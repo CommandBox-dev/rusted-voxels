@@ -142,6 +142,9 @@ fn main() {
                             0,
                         );
                     }
+                    //if result.hit_block == 3 {
+                    //    world.fill_circle(result.hit_position.x, result.hit_position.y, result.hit_position.z, 5, vec![0]);
+                    //}
                 }
 
                 glfw::WindowEvent::MouseButton(MouseButton::Right, Action::Press, _) => {

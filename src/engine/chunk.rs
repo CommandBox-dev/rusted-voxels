@@ -108,7 +108,7 @@ impl Chunk {
         for x in 0..CHUNK_WIDTH {
             for y in 0..CHUNK_HEIGHT {
                 for z in 0..CHUNK_WIDTH {
-                    if y < 100 { 
+                    if y < rand::random_range(100..108) {
                         block_data[index(x, y, z)] = rand::random_range(1..=2);
                     }
                 }
@@ -127,8 +127,24 @@ impl Chunk {
         }
     }
 
+    pub fn set_block_and_get(&mut self, x: i32, y: i32, z: i32, block: u32) -> u32 {
+        // sets block and returns the block it replaced
+
+        if x < 0 || x >= CHUNK_WIDTH ||
+           z < 0 || z >= CHUNK_WIDTH ||
+           y < 0 || y >= CHUNK_HEIGHT
+        {return u32::MAX;}
+
+        let index = index(x, y, z);
+
+        let replaced_block = self.block_data[index];
+        self.block_data[index] = block;
+
+        replaced_block
+    }
+
     pub fn set_block(&mut self, x: i32, y: i32, z: i32, block: u32) {
-        // return if outside chunk bounds
+
         if x < 0 || x >= CHUNK_WIDTH ||
            z < 0 || z >= CHUNK_WIDTH ||
            y < 0 || y >= CHUNK_HEIGHT
@@ -138,7 +154,7 @@ impl Chunk {
     }
 
     pub fn get_block(&self, lx: i32, ly: i32, lz: i32) -> u32 {
-         // return if outside chunk bounds
+       
         if lx < 0 || lx >= CHUNK_WIDTH ||
            lz < 0 || lz >= CHUNK_WIDTH ||
            ly < 0 || ly >= CHUNK_HEIGHT
