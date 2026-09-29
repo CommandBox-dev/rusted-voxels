@@ -133,19 +133,19 @@ impl Chunk {
         self.block_data[index(x, y, z)] = block;
     }
 
-    pub fn get_block(&self, x: i32, y: i32, z: i32) -> u32 {
+    pub fn get_block(&self, lx: i32, ly: i32, lz: i32) -> u32 {
          // return if outside chunk bounds
-        if x < 0 || x >= CHUNK_WIDTH ||
-           z < 0 || z >= CHUNK_WIDTH ||
-           y < 0 || y >= CHUNK_HEIGHT
+        if lx < 0 || lx >= CHUNK_WIDTH ||
+           lz < 0 || lz >= CHUNK_WIDTH ||
+           ly < 0 || ly >= CHUNK_HEIGHT
         {return 0}
 
-        self.block_data[index(x, y, z)]
+        self.block_data[index(lx, ly, lz)]
     }
 
-    fn get_block_global(&self, world: &mut World, lx: i32, ly: i32, lz: i32) -> u32 {
+    fn get_block_global(&self, world: &World, lx: i32, ly: i32, lz: i32) -> u32 {
         // returns global world blocks if position is outside chunk bounds
-        if ly < 0 || ly >= CHUNK_HEIGHT {return 0;}
+        if ly < 0 || ly >= CHUNK_HEIGHT {return u32::MAX;}
 
         if lx < 0 || lx >= CHUNK_WIDTH || lz < 0 || lz >= CHUNK_WIDTH {
             let gx = self.cbx + lx;
@@ -153,11 +153,11 @@ impl Chunk {
             return world.get_block(gx, ly, gz);
         }
 
-        self.get_block(lx, ly, ly)
+        self.get_block(lx, ly, lz)
 
     }
 
-    pub fn build_mesh(&self, world: &World, block_models: &[BlockModel; 2]) -> Vec<f32> {
+    pub fn build_mesh(&self, world: &World, block_models: &Vec<BlockModel>) -> Vec<f32> {
         // the passing of the block model 
 
         let mut mesh = Vec::new();
@@ -186,17 +186,17 @@ impl Chunk {
     fn get_face_mask(&self, x: i32, y: i32, z: i32, world: &World) -> u32 {
         let mut mask = 0;
 
-        if self.get_block(x + 1, y, z) == 0 {mask |= 1;}
-        if self.get_block(x - 1, y, z) == 0 {mask |= 2;}
-        if self.get_block(x, y + 1, z) == 0 {mask |= 4;}
-        if self.get_block(x, y - 1, z) == 0 {mask |= 8;}
-        if self.get_block(x, y, z + 1) == 0 {mask |= 16;}
-        if self.get_block(x, y, z - 1) == 0 {mask |= 32;}
+        if self.get_block_global(world, x + 1, y, z) == 0 {mask |= 1;}
+        if self.get_block_global(world, x - 1, y, z) == 0 {mask |= 2;}
+        if self.get_block_global(world, x, y + 1, z) == 0 {mask |= 4;}
+        if self.get_block_global(world, x, y - 1, z) == 0 {mask |= 8;}
+        if self.get_block_global(world, x, y, z + 1) == 0 {mask |= 16;}
+        if self.get_block_global(world, x, y, z - 1) == 0 {mask |= 32;}
 
         mask
     }
 
-    fn add_face(mesh: &mut Vec<f32>, face: u32, x: i32, y: i32, z: i32, block: u32, block_models: &[BlockModel; 2]) {
+    fn add_face(mesh: &mut Vec<f32>, face: u32, x: i32, y: i32, z: i32, block: u32, block_models: &Vec<BlockModel>) {
         let start = 6 * face; // 6 vertices (two triangles) * face index
         let b = block as usize - 1;
 

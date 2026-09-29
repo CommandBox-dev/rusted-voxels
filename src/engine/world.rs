@@ -1,3 +1,7 @@
+use std::ops::Add;
+
+use glam::*;
+
 use crate::engine::{block_model::BlockModel, chunk::{self, Chunk}, chunk_renderer, world};
 
 pub const RENDER_DISTANCE: u32 = 15;
@@ -13,7 +17,7 @@ pub struct World {
 }
 
 impl World {
-    pub fn new(block_models: &[BlockModel; 2]) -> Self {
+    pub fn new(block_models: &Vec<BlockModel>) -> Self {
 
         let mut chunks: Box<[Option<Chunk>; RENDER_AREA as usize]> =
             Box::new(std::array::from_fn(|_| None));
@@ -50,15 +54,15 @@ impl World {
         new_self
     }
 
-    pub fn chunk_index(x: i32, z: i32) -> u32 {
-        ((x * RENDER_DISTANCE as i32) + (z % RENDER_DISTANCE as i32)) as u32
+    pub fn chunk_index(cx: i32, cz: i32) -> u32 {
+        ((cx * RENDER_DISTANCE as i32) + (cz % RENDER_DISTANCE as i32)) as u32
     }
 
-    pub fn get_chunk_index(&self, x: i32, z: i32) -> u32 {
-        if x < 0 || x >= RENDER_DISTANCE as i32 ||
-           z < 0 || z >= RENDER_DISTANCE as i32 {return u32::MAX;}
+    pub fn get_chunk_index(&self, cx: i32, cz: i32) -> u32 {
+        if cx < 0 || cx >= RENDER_DISTANCE as i32 ||
+           cz < 0 || cz >= RENDER_DISTANCE as i32 {return u32::MAX;}
 
-        World::chunk_index(x, z)
+        World::chunk_index(cx, cz)
     }
 
     pub fn get_chunk(&self, x: i32, z: i32) -> Option<&Chunk> {
@@ -92,7 +96,7 @@ impl World {
         if let Some(chunk) = self.get_chunk(cx, cz) {
             return chunk.get_block(lx, gy, lz);
         } else {
-            return 0;
+            return u32::MAX;
         }
     }
 
@@ -107,7 +111,11 @@ impl World {
 
         if let Some(chunk) = self.get_chunk_mut_from_index(index) {
             chunk.set_block(lx, gy, lz, block);
-            self.mark_chunk_dirty(index);
+
+            let mut place_pos = IVec3::new(gx, gy, gz);
+            
+            self.mark_chunk_area_dirty(place_pos, place_pos);
+            //self.mark_chunk_dirty(index);
         }
     }
 
@@ -115,8 +123,28 @@ impl World {
         self.dirty_chunks.push(chunk_index);
     }
 
-    pub fn update_dirty_chunks(&mut self, block_models: &[BlockModel; 2]) {
-        for index in self.dirty_chunks.pop() {
+    pub fn mark_chunk_area_dirty(&mut self, mut min_gp: IVec3, mut max_gp: IVec3) {
+        // updates all chunks that are in or are touching the area
+        if min_gp.x > max_gp.x || min_gp.y > max_gp.y || min_gp.z > max_gp.z {return;}
+
+        // scale the area by 1 block to update touching chunks
+        min_gp -= IVec3::ONE;
+        max_gp += IVec3::ONE;
+
+        let cx = min_gp.x / 16; //>> 4; // floor divide by 16, 2^4 = 16 2^5 for 32...
+        let cz = min_gp.z / 16; //>> 4;
+        let mcx = max_gp.x / 16; //>> 4;
+        let mcz = max_gp.z / 16; //>> 4;
+
+        for x in cx..=mcx {
+            for z in cz..=mcz {
+                self.dirty_chunks.push(World::chunk_index(x, z));
+            }
+        }
+    }
+
+    pub fn update_dirty_chunks(&mut self, block_models: &Vec<BlockModel>) {
+        while let Some(index) = self.dirty_chunks.pop() {
             let mesh = if let Some(chunk) = self.get_chunk_from_index(index) {
                 chunk.build_mesh(self, block_models)
             } else {

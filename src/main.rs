@@ -78,13 +78,16 @@ fn main() {
 
     let base_texture = texture_atlas.id;
 
-    let block_one_uv = texture_atlas.search_tile(String::from("wall"));
-    let block_two_uv = texture_atlas.search_tile(String::from("texture"));
+    let uv_cobblestone = texture_atlas.search_tile(String::from("cobblestone"));
+    let uv_wall = texture_atlas.search_tile(String::from("wall"));
+    let uv_crate = texture_atlas.search_tile(String::from("crate"));
+
     let atlas_tile_aspect = 1.0 / texture_atlas.tiles_per_row as f32;
 
-    let block_models = [
-        BlockModel::new(block_one_uv.0, block_one_uv.1, block_one_uv.0 + atlas_tile_aspect, block_one_uv.1 + atlas_tile_aspect),
-        BlockModel::new(block_two_uv.0, block_two_uv.1, block_two_uv.0 + atlas_tile_aspect, block_two_uv.1 + atlas_tile_aspect),
+    let block_models = vec![
+        BlockModel::new(uv_cobblestone.0, uv_cobblestone.1, uv_cobblestone.0 + atlas_tile_aspect, uv_cobblestone.1 + atlas_tile_aspect),
+        BlockModel::new(uv_wall.0, uv_wall.1, uv_wall.0 + atlas_tile_aspect, uv_wall.1 + atlas_tile_aspect),
+        BlockModel::new(uv_crate.0, uv_crate.1, uv_crate.0 + atlas_tile_aspect, uv_crate.1 + atlas_tile_aspect),
     ];
 
     let model_loc = unsafe {
@@ -149,7 +152,7 @@ fn main() {
                             result.hit_position.x + result.hit_normal.x,
                             result.hit_position.y + result.hit_normal.y,
                             result.hit_position.z + result.hit_normal.z,
-                            2,
+                            3,
                         );
                     }
                 }
