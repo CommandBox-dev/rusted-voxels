@@ -1,6 +1,6 @@
 use rand::Rng;
 
-use crate::engine::block_model::BlockModel;
+use crate::engine::{block_model::BlockModel, world::{self, World}};
 
 pub static CHUNK_WIDTH: i32 = 16;
 pub static CHUNK_HEIGHT: i32 = 256;
@@ -66,17 +66,24 @@ const VERTICES: [f32; 108 + 72] = [
 ];
 
 const NORMAL_LIGHT: [f32; 6] = [
-    0.8, // right
-    0.8, // left
+    0.75, // right
+    0.75, // left
     1.0, // top
     0.5, // bottom
     0.65, // front
     0.65, // back
 ];
 
+// cx, cy, cz = chunk coordinates
+// cbx, cby, cbz = chunk coordinates in global block coordinates; chunk (cx: 1, cz: 3) = (cbx: 16, cbz: 48)
+// lx, ly, lz = local block coordinates
+// gx, gy, gz = global block coordinates
+
 pub struct Chunk {
-    pub x: i32,
-    pub z: i32,
+    pub cx: i32,
+    pub cz: i32,
+    pub cbx: i32,
+    pub cbz: i32,
     block_data: Box<[u32; CHUNK_VOLUME as usize]>,
     // mesh
     pub vao: u32,
@@ -90,7 +97,7 @@ fn index(x: i32, y: i32, z: i32) -> usize {
 
 impl Chunk {
 
-    pub fn new(x: i32, z: i32) -> Self {
+    pub fn new(cx: i32, cz: i32) -> Self {
 
         let mut block_data = Box::new([0; CHUNK_VOLUME as usize]);
 
@@ -105,8 +112,10 @@ impl Chunk {
         }
 
         Self {
-            x,
-            z,
+            cx,
+            cz,
+            cbx: cx * CHUNK_WIDTH,
+            cbz: cz * CHUNK_WIDTH,
             block_data,
             vao: 0,
             vbo: 0,
@@ -134,7 +143,21 @@ impl Chunk {
         self.block_data[index(x, y, z)]
     }
 
-    pub fn build_mesh(&mut self, block_models: &[BlockModel; 2]) -> Vec<f32> {
+    fn get_block_global(&self, world: &mut World, lx: i32, ly: i32, lz: i32) -> u32 {
+        // returns global world blocks if position is outside chunk bounds
+        if ly < 0 || ly >= CHUNK_HEIGHT {return 0;}
+
+        if lx < 0 || lx >= CHUNK_WIDTH || lz < 0 || lz >= CHUNK_WIDTH {
+            let gx = self.cbx + lx;
+            let gz = self.cbz + lz;
+            return world.get_block(gx, ly, gz);
+        }
+
+        self.get_block(lx, ly, ly)
+
+    }
+
+    pub fn build_mesh(&self, world: &World, block_models: &[BlockModel; 2]) -> Vec<f32> {
         // the passing of the block model 
 
         let mut mesh = Vec::new();
@@ -147,7 +170,7 @@ impl Chunk {
 
                     if block == 0 {continue;}
 
-                    let mask = self.get_face_mask(x, y, z);
+                    let mask = self.get_face_mask(x, y, z, world);
 
                     for face in 0..6 {
                         if mask & (1 << face) != 0 {
@@ -157,11 +180,10 @@ impl Chunk {
                 }
             }
         }
-        self.vertex_count = (mesh.len() / 6) as u32;
         mesh
     }
 
-    fn get_face_mask(&self, x: i32, y: i32, z: i32) -> u32 {
+    fn get_face_mask(&self, x: i32, y: i32, z: i32, world: &World) -> u32 {
         let mut mask = 0;
 
         if self.get_block(x + 1, y, z) == 0 {mask |= 1;}

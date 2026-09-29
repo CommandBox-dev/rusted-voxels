@@ -5,7 +5,8 @@ use crate::engine::{chunk::{self, Chunk}, chunk_renderer};
 use crate::engine::{world::{self, World}};
 
 pub fn upload_chunk_mesh(chunk: &mut Chunk, mesh: Vec<f32>) {
-    println!("mesh vertex count: {}", mesh.len());
+    chunk.vertex_count = (mesh.len() / 6) as u32;
+
     unsafe {
         // delete old mesh if one exists
         if chunk.vao != 0 {gl::DeleteVertexArrays(1, &chunk.vao);}
@@ -63,7 +64,7 @@ pub fn upload_chunk_mesh(chunk: &mut Chunk, mesh: Vec<f32>) {
 
 pub fn render_chunk_mesh(chunk: &Chunk, model_loc: i32) {
     unsafe{
-        let model = Mat4::from_translation(Vec3::new((chunk.x * 16) as f32, 0.0, (chunk.z * 16) as f32));
+        let model = Mat4::from_translation(Vec3::new((chunk.cbx) as f32, 0.0, (chunk.cbz) as f32));
         gl::BindVertexArray(chunk.vao);
         gl::UniformMatrix4fv(model_loc, 1, gl::FALSE, model.to_cols_array().as_ptr());
         gl::DrawArrays(gl::TRIANGLES, 0, chunk.vertex_count as i32);

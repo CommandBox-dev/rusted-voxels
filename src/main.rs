@@ -21,8 +21,8 @@ fn main() {
     let mut frame_acc = 0;
     let mut time_acc = 0.0;
     
-    let window_width = 800;
-    let window_height = 600;
+    let window_width = 1920;
+    let window_height = 1080;
 
     //let viewport_width = 0;
     //let viewport_height = 0;
@@ -74,17 +74,13 @@ fn main() {
     }
 
     let base_shader = load_shader("./res/shaders/basic.vert", "./res/shaders/basic.frag");
-    //let base_texture = load_texture_from_path("./res/textures/texture.png");
     let texture_atlas = load_texture_atlas("./res/textures");
+
     let base_texture = texture_atlas.id;
 
     let block_one_uv = texture_atlas.search_tile(String::from("wall"));
     let block_two_uv = texture_atlas.search_tile(String::from("texture"));
     let atlas_tile_aspect = 1.0 / texture_atlas.tiles_per_row as f32;
-
-    println!("uv_b1: {}, {}",  block_one_uv.0, block_one_uv.1);
-    println!("uv_b2: {}, {}",  block_two_uv.0, block_two_uv.1);
-    println!("tile_aspect: {}", atlas_tile_aspect);
 
     let block_models = [
         BlockModel::new(block_one_uv.0, block_one_uv.1, block_one_uv.0 + atlas_tile_aspect, block_one_uv.1 + atlas_tile_aspect),
@@ -121,7 +117,6 @@ fn main() {
             frame_acc = 0;
             time_acc = 0.0;
         }
-        //println!("{}", delta);
 
         // handle keybord input
         
@@ -142,7 +137,6 @@ fn main() {
                             result.hit_position.y,
                             result.hit_position.z,
                             0,
-                            &block_models
                         );
                     }
                 }
@@ -156,7 +150,6 @@ fn main() {
                             result.hit_position.y + result.hit_normal.y,
                             result.hit_position.z + result.hit_normal.z,
                             2,
-                            &block_models
                         );
                     }
                 }
@@ -231,6 +224,8 @@ fn main() {
         camera.position += camera.front * input.x * delta * speed;
         camera.position += camera.right * input.y * delta * speed;
         camera.recalculate_view();
+
+        world.update_dirty_chunks(&block_models);
         
         unsafe {
             gl::ClearColor(0.3, 0.3, 0.3, 1.0);
