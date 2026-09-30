@@ -255,14 +255,16 @@ impl Chunk {
 
         let nl = NORMAL_LIGHT[face as usize];
 
+        let uvo = (face * 4) as usize;
+
         // triangle 1 (lower)
-        Chunk::add_vertex(mesh, x, y, z, block_models[b].uv_min_x, block_models[b].uv_min_y, nl * ao4, start); // left bottom corner
-        Chunk::add_vertex(mesh, x, y, z, block_models[b].uv_max_x, block_models[b].uv_min_y, nl * ao1, start + 1); // right bottom corner
-        Chunk::add_vertex(mesh, x, y, z, block_models[b].uv_max_x, block_models[b].uv_max_y, nl * ao2, start + 2); // right top corner
+        Chunk::add_vertex(mesh, x, y, z, block_models[b].uvs[uvo + 0], block_models[b].uvs[uvo + 1], nl * ao4, start); // left bottom corner
+        Chunk::add_vertex(mesh, x, y, z, block_models[b].uvs[uvo + 2], block_models[b].uvs[uvo + 1], nl * ao1, start + 1); // right bottom corner
+        Chunk::add_vertex(mesh, x, y, z, block_models[b].uvs[uvo + 2], block_models[b].uvs[uvo + 3], nl * ao2, start + 2); // right top corner
         // triangle 2 (upper)
-        Chunk::add_vertex(mesh, x, y, z, block_models[b].uv_min_x, block_models[b].uv_min_y, nl * ao4, start + 3); // left bottom corner
-        Chunk::add_vertex(mesh, x, y, z, block_models[b].uv_max_x, block_models[b].uv_max_y, nl * ao2, start + 4); // right top corner
-        Chunk::add_vertex(mesh, x, y, z, block_models[b].uv_min_x, block_models[b].uv_max_y, nl * ao3, start + 5); // left top corner
+        Chunk::add_vertex(mesh, x, y, z, block_models[b].uvs[uvo + 0], block_models[b].uvs[uvo + 1], nl * ao4, start + 3); // left bottom corner
+        Chunk::add_vertex(mesh, x, y, z, block_models[b].uvs[uvo + 2], block_models[b].uvs[uvo + 3], nl * ao2, start + 4); // right top corner
+        Chunk::add_vertex(mesh, x, y, z, block_models[b].uvs[uvo + 0], block_models[b].uvs[uvo + 3], nl * ao3, start + 5); // left top corner
     }
 
     fn add_vertex(mesh: &mut Vec<f32>, x: i32, y: i32, z: i32, u: f32, v: f32, light: f32, vertex: u32) {

@@ -7,30 +7,66 @@ pub struct BlockModel {
 
     // shape
 
-    pub uv_min_x: f32,
-    pub uv_min_y: f32,
-    pub uv_max_x: f32,
-    pub uv_max_y: f32,
+    pub uvs: [f32; 24],
 }
 
 impl BlockModel {
-    pub fn new(
+
+    pub fn new_cube(
         uv_min_x: f32,
         uv_min_y: f32,
         uv_max_x: f32,
         uv_max_y: f32,
     ) -> Self {
 
-        println!("block model uvs: min: {}, {}, max: {}, {}",  uv_min_x, uv_min_y, uv_max_x, uv_max_y);
+        let uvs = [
+            uv_min_x,
+            uv_min_y,
+            uv_max_x,
+            uv_max_y,
+
+            uv_min_x,
+            uv_min_y,
+            uv_max_x,
+            uv_max_y,
+
+            uv_min_x,
+            uv_min_y,
+            uv_max_x,
+            uv_max_y,
+
+            uv_min_x,
+            uv_min_y,
+            uv_max_x,
+            uv_max_y,
+
+            uv_min_x,
+            uv_min_y,
+            uv_max_x,
+            uv_max_y,
+
+            uv_min_x,
+            uv_min_y,
+            uv_max_x,
+            uv_max_y,
+        ];
 
         Self {
             solid_blocksites_mask: 0,
             cullable_faces: Vec::new(),
             cull_own_blocktype: false,
-            uv_min_x,
-            uv_min_y,
-            uv_max_x,
-            uv_max_y,
+            uvs,
         }
+    }
+
+    pub fn new_cube_indiv_face_uvs(face_uvs: [f32; 24]) -> Self {
+
+        Self {
+            solid_blocksites_mask: 0,
+            cullable_faces: Vec::new(),
+            cull_own_blocktype: false,
+            uvs: face_uvs,
+        }
+        
     }
 }
