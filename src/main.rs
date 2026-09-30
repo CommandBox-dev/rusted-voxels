@@ -81,6 +81,7 @@ fn main() {
     let uv_cobblestone = texture_atlas.search_tile(String::from("cobblestone"));
     let uv_wall = texture_atlas.search_tile(String::from("wall"));
     let uv_crate = texture_atlas.search_tile(String::from("crate"));
+    let uv_grass = texture_atlas.search_tile(String::from("grass"));
 
     let atlas_tile_aspect = 1.0 / texture_atlas.tiles_per_row as f32;
 
@@ -88,6 +89,7 @@ fn main() {
         BlockModel::new(uv_cobblestone.0, uv_cobblestone.1, uv_cobblestone.0 + atlas_tile_aspect, uv_cobblestone.1 + atlas_tile_aspect),
         BlockModel::new(uv_wall.0, uv_wall.1, uv_wall.0 + atlas_tile_aspect, uv_wall.1 + atlas_tile_aspect),
         BlockModel::new(uv_crate.0, uv_crate.1, uv_crate.0 + atlas_tile_aspect, uv_crate.1 + atlas_tile_aspect),
+        BlockModel::new(uv_grass.0, uv_grass.1, uv_grass.0 + atlas_tile_aspect, uv_grass.1 + atlas_tile_aspect),
     ];
 
     let model_loc = unsafe {

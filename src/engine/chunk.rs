@@ -125,12 +125,12 @@ impl Chunk {
                     if (y as f64) < ((value + 5.0) * 20.0) {
                         block_data[index(x, y, z)] = 1;
                         placed = true;
-                    } /* else {
+                    } else {
                         if placed {
                             placed = false;
-                            block_data[index(x, y, z)] = 2;
+                            block_data[index(x, y, z)] = 4;
                         }
-                    }*/
+                    }
                     //}
                 }
             }
