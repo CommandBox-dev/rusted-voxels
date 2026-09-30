@@ -1,3 +1,6 @@
+use std::alloc::System;
+
+use noise::{NoiseFn, Perlin};
 use rand::Rng;
 
 use crate::engine::{block_model::BlockModel, world::{self, World}};
@@ -102,24 +105,43 @@ fn index(x: i32, y: i32, z: i32) -> usize {
 impl Chunk {
 
     pub fn new(cx: i32, cz: i32) -> Self {
+        let cbx = cx * CHUNK_WIDTH;
+        let cbz = cz * CHUNK_WIDTH;
 
         let mut block_data = Box::new([0; CHUNK_VOLUME as usize]);
 
+        let height = rand::random_range(100..104); // 108
+        let noise = Perlin::new(12345);
+
         for x in 0..CHUNK_WIDTH {
-            for y in 0..CHUNK_HEIGHT {
-                for z in 0..CHUNK_WIDTH {
-                    if y < rand::random_range(100..108) {
-                        block_data[index(x, y, z)] = rand::random_range(1..=2);
-                    }
+            for z in 0..CHUNK_WIDTH {
+                let mut placed = false;
+                for y in 0..CHUNK_HEIGHT {
+                    //if y < 100 {
+                       // block_data[index(x, y, z)] = rand::random_range(1..=2);
+                    let value = noise.get([(x + cbx) as f64 * 0.025, (z + cbz) as f64 * 0.025]);
+                       //println!("Noise value: {}", value);
+
+                    if (y as f64) < ((value + 5.0) * 20.0) {
+                        block_data[index(x, y, z)] = 1;
+                        placed = true;
+                    } /* else {
+                        if placed {
+                            placed = false;
+                            block_data[index(x, y, z)] = 2;
+                        }
+                    }*/
+                    //}
                 }
             }
         }
 
+
         Self {
             cx,
             cz,
-            cbx: cx * CHUNK_WIDTH,
-            cbz: cz * CHUNK_WIDTH,
+            cbx,
+            cbz,
             block_data,
             vao: 0,
             vbo: 0,
@@ -224,6 +246,12 @@ impl Chunk {
         let ao2 = AO_CURVE[ao.1 as usize];
         let ao3 = AO_CURVE[ao.2 as usize];
         let ao4 = AO_CURVE[ao.3 as usize];
+
+        // to disable ao
+        /*let ao1 = 1.0;
+        let ao2 = 1.0;
+        let ao3 = 1.0;
+        let ao4 = 1.0;*/
 
         let nl = NORMAL_LIGHT[face as usize];
 

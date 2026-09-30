@@ -113,7 +113,7 @@ impl World {
             let replaced_block = chunk.set_block_and_get(lx, gy, lz, block);
 
             if replaced_block == 3 {
-                self.fill_circle(gx, gy, gz, 5, vec![0]);
+                self.fill_circle(gx, gy, gz, 8, vec![0]); // 5
             }
 
             let mut place_pos = IVec3::new(gx, gy, gz);
