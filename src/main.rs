@@ -8,12 +8,19 @@ use crate::engine::world::*;
 use crate::engine::shader::*;
 use crate::engine::texture::*;
 use crate::engine::block_model::*;
+use crate::engine::physics::aabb::*;
+use crate::engine::physics::aabb::AABB;
 
 use glfw::{Action, Context, Key, MouseButton, ffi::glfwGetFramebufferSize};
-use glam::{Mat4, Vec2, Vec3};
+use glam::{Mat4, Vec2, Vec3, IVec3};
 use rand::rand_core::utils::Word;
 
 fn main() {
+
+    let hit_box = AABB {
+        min: Vec3::new(-0.3, -1.62, -0.3),
+        max: Vec3::new(0.3, 0.18, 0.3),
+    };
 
     let mut time_last_frame = std::time::Instant::now();
     let mut delta: f32;
@@ -49,6 +56,9 @@ fn main() {
     window.set_cursor_pos_polling(true);
     window.set_cursor_mode(glfw::CursorMode::Disabled);
 
+    let mut is_on_floor = false;
+    let mut velocity = Vec3::new(0.0, 0.0, 0.0);
+
     gl::load_with(|symbol| {
         window
         .get_proc_address(symbol)
@@ -76,13 +86,22 @@ fn main() {
     let base_shader = load_shader("./res/shaders/basic.vert", "./res/shaders/basic.frag");
     let texture_atlas = load_texture_atlas("./res/textures");
 
+    let mut selected_block: u32 = 3;
+
     let base_texture = texture_atlas.id;
 
-    let uv_cobblestone = texture_atlas.search_tile(String::from("cobblestone"));
-    let uv_wall = texture_atlas.search_tile(String::from("wall"));
+    let mut last_place_time: f32 = 0.0;
+    let mut locked_placing_axis = false;
+    let mut locked_placing_dir = IVec3::new(0, 0, 0);
+    let mut locked_placing_normal = IVec3::new(0, 0, 0);
+
+    //let uv_cobblestone = texture_atlas.search_tile(String::from("cobblestone"));
+    let uv_cobblestone = texture_atlas.search_tile(String::from("stone"));
+    let uv_wall = texture_atlas.search_tile(String::from("wall2"));
     let uv_crate = texture_atlas.search_tile(String::from("crate"));
     let uv_grass = texture_atlas.search_tile(String::from("grass"));
     let uv_grass_side = texture_atlas.search_tile(String::from("grass_side"));
+    let uv_log_side = texture_atlas.search_tile(String::from("log"));
 
     let atlas_tile_aspect = 1.0 / texture_atlas.tiles_per_row as f32;
 
@@ -98,6 +117,7 @@ fn main() {
             uv_grass_side.0, uv_grass_side.1, uv_grass_side.0 + atlas_tile_aspect, uv_grass_side.1 + atlas_tile_aspect,
             uv_grass_side.0, uv_grass_side.1, uv_grass_side.0 + atlas_tile_aspect, uv_grass_side.1 + atlas_tile_aspect
         ]),
+        BlockModel::new_cube(uv_log_side.0, uv_log_side.1, uv_log_side.0 + atlas_tile_aspect, uv_log_side.1 + atlas_tile_aspect),
     ];
 
     let model_loc = unsafe {
@@ -152,21 +172,25 @@ fn main() {
                             0,
                         );
                     }
-                    //if result.hit_block == 3 {
-                    //    world.fill_circle(result.hit_position.x, result.hit_position.y, result.hit_position.z, 5, vec![0]);
-                    //}
                 }
 
                 glfw::WindowEvent::MouseButton(MouseButton::Right, Action::Press, _) => {
-                    //println!("{:?}, {:?}", button, action);
                     let result = raycast::cast_ray(camera.position, camera.front, 15.0, &mut world);
                     if result.hit {
                         &world.set_block(
                             result.hit_position.x + result.hit_normal.x,
                             result.hit_position.y + result.hit_normal.y,
                             result.hit_position.z + result.hit_normal.z,
-                            3,
+                            selected_block,
                         );
+                    }
+                }
+
+
+                glfw::WindowEvent::MouseButton(MouseButton::Middle, Action::Press, _) => {
+                    let result = raycast::cast_ray(camera.position, camera.front, 15.0, &mut world);
+                    if result.hit {
+                        selected_block = result.hit_block;
                     }
                 }
 
@@ -211,24 +235,60 @@ fn main() {
 
         if window.get_key(Key::W) == Action::Press {
             front = 1;
-        } else {
-            front = 0;
         }
         if window.get_key(Key::S) == Action::Press {
             back = 1;
-        } else {
-            back = 0;
         }
         if window.get_key(Key::D) == Action::Press {
             right = 1;
-        } else {
-            right = 0;
         }
         if window.get_key(Key::A) == Action::Press {
             left = 1;
-        } else {
-            left = 0;
         }
+        if window.get_key(Key::Space) == Action::Press {
+            if is_on_floor {velocity.y = 0.1;}
+        } else {
+            velocity.y += (-9.8 * 0.5 * delta);
+        }
+        if window.get_mouse_button(MouseButton::Right) == Action::Press {
+            if last_place_time > 0.1 {
+                if locked_placing_axis == false {
+                    let result = raycast::cast_ray(camera.position, camera.front, 15.0, &mut world);
+                    if result.hit {
+                        &world.set_block(
+                            result.hit_position.x + result.hit_normal.x,
+                            result.hit_position.y + result.hit_normal.y,
+                            result.hit_position.z + result.hit_normal.z,
+                            selected_block,
+                        );
+                        last_place_time = 0.0;
+                        locked_placing_axis = true;
+                        locked_placing_dir = result.hit_position + result.hit_normal + result.hit_normal;
+                        locked_placing_normal = result.hit_normal;
+                    }
+                } else {
+                    let result = raycast::cast_ray(camera.position, camera.front, 15.0, &mut world);
+                    if result.hit &&
+                        result.hit_position + result.hit_normal == locked_placing_dir
+                    {
+                        &world.set_block(
+                            result.hit_position.x + result.hit_normal.x,
+                            result.hit_position.y + result.hit_normal.y,
+                            result.hit_position.z + result.hit_normal.z,
+                            selected_block,
+                        );
+                        locked_placing_dir = result.hit_position + locked_placing_normal;
+                        last_place_time = 0.0;
+                    }
+
+                }
+            }
+        } else {
+            last_place_time = 0.0;
+            locked_placing_axis = false;
+        }
+
+        last_place_time += delta;
 
         let input = Vec2::new((front - back) as f32, -(right - left) as f32);
         let mut speed = 8.0;
@@ -237,8 +297,18 @@ fn main() {
             speed *= 3.0;
         }
 
-        camera.position += camera.front * input.x * delta * speed;
-        camera.position += camera.right * input.y * delta * speed;
+        let vel_y = velocity.y;
+
+        velocity = camera.forward * input.x * delta * speed;
+        velocity += camera.right * input.y * delta * speed;
+        velocity.y += vel_y;
+
+        let result = move_and_collide(&world, &camera.position, &mut velocity, &hit_box);
+        is_on_floor = result.is_on_floor;
+
+        camera.position += velocity;
+        velocity.y *= 0.98;
+
         camera.recalculate_view();
 
         world.update_dirty_chunks(&block_models);

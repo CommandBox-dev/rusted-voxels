@@ -3,6 +3,8 @@ use glam::{Mat4, Vec3};
 pub struct Camera {
     pub position: Vec3,
 
+    pub forward: Vec3,
+
     pub front: Vec3,
     pub right: Vec3,
     pub up: Vec3,
@@ -26,6 +28,7 @@ impl Camera {
     pub fn new(position: Vec3, pitch: f32, yaw: f32, viewport_width: u32, viewport_height: u32, fov: f32) -> Self {
         Self {
             position,
+            forward: -Vec3::Z,
             front: -Vec3::Z,
             right: Vec3::X,
             up: Vec3::Y,
@@ -51,6 +54,13 @@ impl Camera {
         let yaw = self.yaw.to_radians();
         let pitch = self.pitch.to_radians();
 
+        // forward
+        self.forward = Vec3::new(
+            pitch.cos() * yaw.sin(),
+            0.0,
+            pitch.cos() * yaw.cos()
+        ).normalize();
+
         // front
         self.front = Vec3::new(
             pitch.cos() * yaw.sin(),
@@ -66,6 +76,7 @@ impl Camera {
         ).normalize();
 
         // up
-        self.up = self.front.cross(self.right);
+        //self.up = self.front.cross(self.right);
+        self.up = Vec3::Y
     }
 }

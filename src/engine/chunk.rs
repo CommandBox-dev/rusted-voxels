@@ -1,6 +1,6 @@
 use std::alloc::System;
 
-use noise::{NoiseFn, Perlin};
+use fastnoise_lite::FastNoiseLite;
 use rand::Rng;
 
 use crate::engine::{block_model::BlockModel, world::{self, World}};
@@ -111,7 +111,7 @@ impl Chunk {
         let mut block_data = Box::new([0; CHUNK_VOLUME as usize]);
 
         let height = rand::random_range(100..104); // 108
-        let noise = Perlin::new(12345);
+        let noise = FastNoiseLite::new();
 
         for x in 0..CHUNK_WIDTH {
             for z in 0..CHUNK_WIDTH {
@@ -119,12 +119,14 @@ impl Chunk {
                 for y in 0..CHUNK_HEIGHT {
                     //if y < 100 {
                        // block_data[index(x, y, z)] = rand::random_range(1..=2);
-                    let value = noise.get([(x + cbx) as f64 * 0.025, (z + cbz) as f64 * 0.025]);
+                    let value = noise.get_noise_2d((x + cbx) as f32 * 2.0, (z + cbz) as f32 * 2.0);
                        //println!("Noise value: {}", value);
 
-                    if (y as f64) < ((value + 5.0) * 20.0) {
-                        block_data[index(x, y, z)] = 1;
+                    if (y as f32) < (value + 5.0) * 20.0 {
+                        let index = index(x, y, z);
+                        block_data[index] = rand::random_range(1..=2);
                         placed = true;
+                        if rand::random_range(0..=1500) == 0 {block_data[index] = 3}
                     } else {
                         if placed {
                             placed = false;
