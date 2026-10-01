@@ -8,6 +8,18 @@ pub struct AABB {
     pub max: Vec3,
 }
 
+impl AABB {
+    pub const CUBE: AABB = AABB {
+        min: Vec3::ZERO,
+        max: Vec3::ONE,
+    };
+    
+    pub const HUMANOID: AABB = AABB {
+        min: Vec3::new(-0.3, -1.62, -0.3),
+        max: Vec3::new(0.3, 0.18, 0.3),
+    };
+}
+
 pub struct CollisionResult {
     pub is_on_floor: bool,
     // collided

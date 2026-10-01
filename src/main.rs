@@ -8,6 +8,8 @@ use crate::engine::world::*;
 use crate::engine::shader::*;
 use crate::engine::texture::*;
 use crate::engine::block_model::*;
+use crate::engine::physics::*;
+use crate::engine::physics::aabb::move_and_collide;
 use crate::engine::physics::aabb::*;
 use crate::engine::physics::aabb::AABB;
 
@@ -17,10 +19,7 @@ use rand::rand_core::utils::Word;
 
 fn main() {
 
-    let hit_box = AABB {
-        min: Vec3::new(-0.3, -1.62, -0.3),
-        max: Vec3::new(0.3, 0.18, 0.3),
-    };
+    let hit_box = AABB::HUMANOID;
 
     let mut time_last_frame = std::time::Instant::now();
     let mut delta: f32;
@@ -59,6 +58,8 @@ fn main() {
     let mut is_on_floor = false;
     let mut velocity = Vec3::new(0.0, 0.0, 0.0);
 
+    let mut escape = false;
+
     gl::load_with(|symbol| {
         window
         .get_proc_address(symbol)
@@ -95,29 +96,24 @@ fn main() {
     let mut locked_placing_dir = IVec3::new(0, 0, 0);
     let mut locked_placing_normal = IVec3::new(0, 0, 0);
 
-    //let uv_cobblestone = texture_atlas.search_tile(String::from("cobblestone"));
-    let uv_cobblestone = texture_atlas.search_tile(String::from("stone"));
-    let uv_wall = texture_atlas.search_tile(String::from("wall2"));
-    let uv_crate = texture_atlas.search_tile(String::from("crate"));
-    let uv_grass = texture_atlas.search_tile(String::from("grass"));
-    let uv_grass_side = texture_atlas.search_tile(String::from("grass_side"));
-    let uv_log_side = texture_atlas.search_tile(String::from("log"));
-
-    let atlas_tile_aspect = 1.0 / texture_atlas.tiles_per_row as f32;
+    //let uv_cobblestone = texture_atlas.get_tile(String::from("cobblestone"));
+    let uv_cobblestone = texture_atlas.get_tile(String::from("stone"));
+    let uv_wall = texture_atlas.get_tile(String::from("wall2"));
+    let uv_crate = texture_atlas.get_tile(String::from("crate"));
+    let uv_grass_top = texture_atlas.get_tile(String::from("grass"));
+    let uv_grass_side = texture_atlas.get_tile(String::from("grass_side"));
+    let uv_log_side = texture_atlas.get_tile(String::from("log"));
 
     let block_models = vec![
-        BlockModel::new_cube(uv_cobblestone.0, uv_cobblestone.1, uv_cobblestone.0 + atlas_tile_aspect, uv_cobblestone.1 + atlas_tile_aspect),
-        BlockModel::new_cube(uv_wall.0, uv_wall.1, uv_wall.0 + atlas_tile_aspect, uv_wall.1 + atlas_tile_aspect),
-        BlockModel::new_cube(uv_crate.0, uv_crate.1, uv_crate.0 + atlas_tile_aspect, uv_crate.1 + atlas_tile_aspect),
-        BlockModel::new_cube_indiv_face_uvs([
-            uv_grass_side.0, uv_grass_side.1, uv_grass_side.0 + atlas_tile_aspect, uv_grass_side.1 + atlas_tile_aspect,
-            uv_grass_side.0, uv_grass_side.1, uv_grass_side.0 + atlas_tile_aspect, uv_grass_side.1 + atlas_tile_aspect,
-            uv_grass.0, uv_grass.1, uv_grass.0 + atlas_tile_aspect, uv_grass.1 + atlas_tile_aspect,
-            uv_cobblestone.0, uv_cobblestone.1, uv_cobblestone.0 + atlas_tile_aspect, uv_cobblestone.1 + atlas_tile_aspect,
-            uv_grass_side.0, uv_grass_side.1, uv_grass_side.0 + atlas_tile_aspect, uv_grass_side.1 + atlas_tile_aspect,
-            uv_grass_side.0, uv_grass_side.1, uv_grass_side.0 + atlas_tile_aspect, uv_grass_side.1 + atlas_tile_aspect
-        ]),
-        BlockModel::new_cube(uv_log_side.0, uv_log_side.1, uv_log_side.0 + atlas_tile_aspect, uv_log_side.1 + atlas_tile_aspect),
+        BlockModel::new_cube(uv_cobblestone),
+        BlockModel::new_cube(uv_wall),
+        BlockModel::new_cube(uv_crate),
+        BlockModel::new_cube_sides_top_bottom(
+            uv_grass_side,
+            uv_grass_top,
+            uv_cobblestone,
+        ),
+        BlockModel::new_cube(uv_log_side),
     ];
 
     let model_loc = unsafe {
@@ -146,19 +142,22 @@ fn main() {
         delta = now.duration_since(time_last_frame).as_secs_f32();
 
         if time_acc > 1.0 {
-            //println!("{}", frame_acc);
             frame_acc = 0;
             time_acc = 0.0;
         }
-
-        // handle keybord input
         
         for (_, event) in glfw::flush_messages(&events) {
             //println!("{:?}", event);
-            match event{
+            match event {
 
                 glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
-                    window.set_should_close(true);
+                    //window.set_should_close(true);
+                    escape = !escape;
+                    if escape {
+                        window.set_cursor_mode(glfw::CursorMode::Normal);
+                    } else {
+                        window.set_cursor_mode(glfw::CursorMode::Disabled);
+                    }
                 }
 
                 glfw::WindowEvent::MouseButton(MouseButton::Left, Action::Press, _) => {
@@ -185,7 +184,6 @@ fn main() {
                         );
                     }
                 }
-
 
                 glfw::WindowEvent::MouseButton(MouseButton::Middle, Action::Press, _) => {
                     let result = raycast::cast_ray(camera.position, camera.front, 15.0, &mut world);
@@ -216,12 +214,13 @@ fn main() {
                     x_offset *= sensitivity;
                     y_offset *= sensitivity;
 
-                    camera.yaw += -x_offset;
-                    camera.pitch += -y_offset;
+                    if !escape {
+                        camera.yaw += -x_offset;
+                        camera.pitch += -y_offset;
 
-                    camera.pitch = camera.pitch.clamp(-89.0, 89.0);
-                    camera.recalculate_vectors();
-                    //println!("mmx: {}, mmy: {}", x_offset, y_offset);
+                        camera.pitch = camera.pitch.clamp(-89.0, 89.0);
+                        camera.recalculate_vectors();
+                    }
                 }
 
                 _ => {}
@@ -246,9 +245,9 @@ fn main() {
             left = 1;
         }
         if window.get_key(Key::Space) == Action::Press {
-            if is_on_floor {velocity.y = 0.1;}
+            velocity.y = 0.1;
         } else {
-            velocity.y += (-9.8 * 0.5 * delta);
+            velocity.y += (-9.8 * 0.045 * delta);
         }
         if window.get_mouse_button(MouseButton::Right) == Action::Press {
             if last_place_time > 0.1 {
@@ -289,15 +288,16 @@ fn main() {
         }
 
         last_place_time += delta;
-
+        
         let input = Vec2::new((front - back) as f32, -(right - left) as f32);
         let mut speed = 8.0;
-
+        
         if window.get_key(Key::LeftShift) == Action::Press {
             speed *= 3.0;
         }
-
+        
         let vel_y = velocity.y;
+        velocity.y *= 0.90;
 
         velocity = camera.forward * input.x * delta * speed;
         velocity += camera.right * input.y * delta * speed;
@@ -307,7 +307,6 @@ fn main() {
         is_on_floor = result.is_on_floor;
 
         camera.position += velocity;
-        velocity.y *= 0.98;
 
         camera.recalculate_view();
 

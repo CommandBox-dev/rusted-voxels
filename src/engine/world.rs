@@ -2,9 +2,9 @@ use std::ops::Add;
 
 use glam::*;
 
-use crate::engine::{block_model::BlockModel, chunk::{self, Chunk}, chunk_renderer, world};
+use crate::engine::{block_model::BlockModel, chunk::{self, Chunk}, chunk_mesher, chunk_renderer, terrain_generator::{self, TerrainGenerator}, world};
 
-pub const RENDER_DISTANCE: u32 = 20; // 15
+pub const RENDER_DISTANCE: u32 = 50;
 pub const RENDER_AREA: u32 = RENDER_DISTANCE * RENDER_DISTANCE;
 
 pub struct World {
@@ -19,6 +19,8 @@ pub struct World {
 impl World {
     pub fn new(block_models: &Vec<BlockModel>) -> Self {
 
+        let chunk_generator = TerrainGenerator::new(12345, terrain_generator::Worldtype::DEFAULT);
+
         let mut chunks: Box<[Option<Chunk>; RENDER_AREA as usize]> =
             Box::new(std::array::from_fn(|_| None));
         let mut dirty_chunks = Vec::new();
@@ -27,6 +29,10 @@ impl World {
             for z in 0..RENDER_DISTANCE {
                 let index = World::chunk_index(x as i32, z as i32);
                 chunks[index as usize] = Some(Chunk::new(x as i32, z as i32));
+                let chunk = chunks[index as usize].as_mut();
+                if let Some(mut chunk) = chunk {
+                    chunk_generator.generate_chunk_terrain(&mut chunk);
+                }
                 &dirty_chunks.push(index);
                 
             }
@@ -90,10 +96,10 @@ impl World {
     pub fn get_block(&self, gx: i32, gy: i32, gz: i32) -> u32 {
         let cx = gx / 16;
         let cz = gz / 16;
-        let lx = gx % 16;
-        let lz = gz % 16;
-
+        
         if let Some(chunk) = self.get_chunk(cx, cz) {
+            let lx = gx % 16;
+            let lz = gz % 16;
             return chunk.get_block(lx, gy, lz);
         } else {
             return u32::MAX;
@@ -103,13 +109,13 @@ impl World {
     pub fn set_block(&mut self, gx: i32, gy: i32, gz: i32, block: u32) {
         let cx = gx / 16;
         let cz = gz / 16;
-        let lx = gx % 16;
-        let lz = gz % 16;
-
+        
         let index = self.get_chunk_index(cx, cz);
         if index == u32::MAX {return;}
-
+        
         if let Some(chunk) = self.get_chunk_mut_from_index(index) {
+            let lx = gx % 16;
+            let lz = gz % 16;
             let replaced_block = chunk.set_block_and_get(lx, gy, lz, block);
 
             if replaced_block == 3 {
@@ -152,7 +158,7 @@ impl World {
     pub fn update_dirty_chunks(&mut self, block_models: &Vec<BlockModel>) {
         while let Some(index) = self.dirty_chunks.pop() {
             let mesh = if let Some(chunk) = self.get_chunk_from_index(index) {
-                chunk.build_mesh(self, block_models)
+                chunk_mesher::build_mesh(&chunk, self, block_models)
             } else {
                 continue;
             };

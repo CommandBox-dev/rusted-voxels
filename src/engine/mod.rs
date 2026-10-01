@@ -7,4 +7,6 @@ pub mod world;
 pub mod chunk_renderer;
 pub mod texture;
 pub mod block_model;
+pub mod chunk_mesher;
 pub mod physics;
+pub mod terrain_generator;

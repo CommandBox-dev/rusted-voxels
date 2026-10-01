@@ -91,8 +91,6 @@ pub fn load_texture_atlas(image_pool_path: &str) -> TextureAtlas {
             continue;
         }
 
-        println!("Loading texture: {}", path.display());
-
         let img = image::open(&path)
             .expect("Failed to load texture")
             .flipv()
@@ -120,13 +118,15 @@ pub fn load_texture_atlas(image_pool_path: &str) -> TextureAtlas {
 
         atlas.copy_from(&img, tile_x, tile_y).expect("Failed to copy tile into atlas");
 
-        println!("tile_x: {}", (tile_x as f32 / 16.0) * tile_aspect);
-        println!("tile_y: {}", (tile_y as f32 / 16.0) * tile_aspect);
+        let x = (tile_x as f32 / 16.0) * tile_aspect;
+        let y = (tile_y as f32 / 16.0) * tile_aspect;
 
-        tiles.push(Tile{
-            name: path.file_stem().unwrap().to_string_lossy().into_owned(), // TODO: replace unwrap logic
-            x: (tile_x as f32 / 16.0) * tile_aspect,
-            y: (tile_y as f32 / 16.0) * tile_aspect,
+        tiles.push(AtlasTile {
+            name: path.file_stem().unwrap().to_string_lossy().into_owned(),
+            x,
+            y,
+            xm: x + tile_aspect,
+            ym: y + tile_aspect,
         });
     };
 
@@ -134,28 +134,30 @@ pub fn load_texture_atlas(image_pool_path: &str) -> TextureAtlas {
 }
 
 impl TextureAtlas {
-    pub fn search_tile(&self, tile: String) -> (f32, f32) {
-        // the first tile in the atlas should be "missing block"
-        // since if the tile isn't found this function will return uv offset 0.0
-        println!("SearchTile: {}", tile);
+    
+    pub fn get_tile(&self, tile: String) -> &AtlasTile {
+        // The first tile in the atlas should be the "missing block" tile,
+        // since if the requested tile isn't found this method will return tile 0
         for i in 0..self.tiles.len() {
             if self.tiles[i].name == tile {
-                println!("SearchedTile: {}", self.tiles[i].name);
-                return (self.tiles[i].x, self.tiles[i].y);
+                return &self.tiles[i];
             }
         }
-        (0.0, 0.0)
+        println!("Tile not found in tile atlas: {}", tile);
+        &self.tiles[0]
     }
 }
 
 pub struct TextureAtlas {
     pub id: u32,
-    pub tiles: Vec<Tile>,
+    pub tiles: Vec<AtlasTile>,
     pub tiles_per_row: u32,
 }
 
-pub struct Tile {
+pub struct AtlasTile {
     name: String,
-    x: f32,
-    y: f32
+    pub x: f32,
+    pub y: f32,
+    pub xm: f32,
+    pub ym: f32,
 }
