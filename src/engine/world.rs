@@ -4,7 +4,7 @@ use glam::*;
 
 use crate::engine::{block_model::BlockModel, chunk::{self, Chunk}, chunk_mesher, chunk_renderer, terrain_generator::{self, TerrainGenerator}, world};
 
-pub const RENDER_DISTANCE: u32 = 50;
+pub const RENDER_DISTANCE: u32 = 5;
 pub const RENDER_AREA: u32 = RENDER_DISTANCE * RENDER_DISTANCE;
 
 pub struct World {
@@ -118,9 +118,9 @@ impl World {
             let lz = gz % 16;
             let replaced_block = chunk.set_block_and_get(lx, gy, lz, block);
 
-            if replaced_block == 3 {
+            /*if replaced_block == 3 {
                 self.fill_circle(gx, gy, gz, 8, vec![0]); // 5
-            }
+            }*/
 
             let mut place_pos = IVec3::new(gx, gy, gz);
             

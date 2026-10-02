@@ -10,3 +10,5 @@ pub mod block_model;
 pub mod chunk_mesher;
 pub mod physics;
 pub mod terrain_generator;
+pub mod resource_manager;
+pub mod input;

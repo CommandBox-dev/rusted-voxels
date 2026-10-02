@@ -15,8 +15,8 @@ impl AABB {
     };
     
     pub const HUMANOID: AABB = AABB {
-        min: Vec3::new(-0.3, -1.62, -0.3),
-        max: Vec3::new(0.3, 0.18, 0.3),
+        min: Vec3::new(-0.3, -1.60, -0.3),
+        max: Vec3::new(0.3, 0.20, 0.3),
     };
 }
 
