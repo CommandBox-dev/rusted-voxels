@@ -11,6 +11,7 @@ pub struct TerrainGenerator {
     pub dimension: Dimension,
 
     noise: FastNoiseLite,
+    overhang_noise: FastNoiseLite,
     biome_noise: FastNoiseLite,
 }
 
@@ -37,11 +38,15 @@ impl TerrainGenerator {
             dimension: Dimension::OVERWORLD,
 
             noise: FastNoiseLite::new(),
+            overhang_noise: FastNoiseLite::new(),
             biome_noise: FastNoiseLite::new(),
         };
 
         terra_gen.biome_noise.set_seed(Some(275));
         terra_gen.biome_noise.set_fractal_octaves(Some(3));
+
+        terra_gen.overhang_noise.set_seed(Some(9334));
+        terra_gen.overhang_noise.set_fractal_octaves(Some(4));
 
         terra_gen
     }
@@ -56,7 +61,9 @@ impl TerrainGenerator {
                 let biome = self.biome_noise.get_noise_2d((x + chunk.cbx) as f32 * 0.3, (z + chunk.cbz) as f32 * 0.3);
 
                 for y in 0..CHUNK_HEIGHT {
-                    if (y as f32) < (value + 5.0) * 20.0 {
+                    let overhang_noise = self.noise.get_noise_3d((x + chunk.cbx) as f32 * 2.0, y as f32 * 1.5, (z + chunk.cbz) as f32 * 2.0);
+
+                    if (y as f32) < (value + 5.0) * 20.0 || overhang_noise * y as f32 * (1.0 - y as f32) > 45.0 {
                         let index = chunk::voxel_index(x, y, z);
                         chunk.block_data[index] = 8; //rand::random_range(1..=total_block_count);
                         placed = true;
