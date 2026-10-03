@@ -11,6 +11,7 @@ pub struct TerrainGenerator {
     pub dimension: Dimension,
 
     noise: FastNoiseLite,
+    biome_noise: FastNoiseLite,
 }
 
 pub enum Worldtype {
@@ -29,13 +30,20 @@ pub enum Biome {
 impl TerrainGenerator {
 
     pub fn new(seed: i32, worldtype: Worldtype) -> Self {
-        Self {
+
+        let mut terra_gen = TerrainGenerator {
             seed,
             worldtype: Worldtype::DEFAULT,
             dimension: Dimension::OVERWORLD,
 
             noise: FastNoiseLite::new(),
-        }
+            biome_noise: FastNoiseLite::new(),
+        };
+
+        terra_gen.biome_noise.set_seed(Some(275));
+        terra_gen.biome_noise.set_fractal_octaves(Some(3));
+
+        terra_gen
     }
 
     pub fn generate_chunk_terrain(&self, chunk: &mut Chunk, total_block_count: u32) {
@@ -45,6 +53,7 @@ impl TerrainGenerator {
 
                 let mut placed = false;
                 let value = self.noise.get_noise_2d((x + chunk.cbx) as f32 * 2.0, (z + chunk.cbz) as f32 * 2.0);
+                let biome = self.biome_noise.get_noise_2d((x + chunk.cbx) as f32 * 0.3, (z + chunk.cbz) as f32 * 0.3);
 
                 for y in 0..CHUNK_HEIGHT {
                     if (y as f32) < (value + 5.0) * 20.0 {
@@ -55,7 +64,7 @@ impl TerrainGenerator {
                     } else {
                         if placed {
                             placed = false;
-                            chunk.block_data[voxel_index(x, y, z)] = 4;
+                            chunk.block_data[voxel_index(x, y, z)] = if biome > 0.5 {3} else {4};
                         }
                     }
                 }

@@ -60,11 +60,13 @@ impl GameWindow { // renamed Window to GameWindow to avoid confusion with the gl
         });
 
         unsafe {
-            gl::ClearColor(0.3, 0.3, 0.3, 1.0);
+            gl::ClearColor(0.511, 0.433, 0.972, 1.0);
             gl::Viewport(0, 0, fb_width, fb_height);
             gl::Enable(gl::DEPTH_TEST);
             gl::Enable(gl::CULL_FACE);
             gl::CullFace(gl::BACK);
+            gl::Enable(gl::BLEND);
+            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
         }
 
         Self {
@@ -75,7 +77,14 @@ impl GameWindow { // renamed Window to GameWindow to avoid confusion with the gl
             height,
             fb_width,
             fb_height,
-            ui_projection: Mat4::orthographic_rh_gl(0.0, fb_width as f32, fb_height as f32, 0.0, -1.0, 1.0),
+            ui_projection: glam::camera::rh::proj::opengl::orthographic(
+                0.0,
+                fb_width as f32,
+                fb_height as f32,
+                0.0,
+                -1.0,
+                1.0
+            ),
             time: 0.0,
             delta: 0.0,
             start_time: Instant::now(),

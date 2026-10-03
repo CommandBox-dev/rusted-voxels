@@ -1,21 +1,23 @@
-use crate::engine::texture::AtlasTile;
+
+use crate::engine::{texture::AtlasTile, window::GameWindow};
 
 
+pub fn upload_crosshair(tile: &AtlasTile, window: &GameWindow) -> (u32, u32) {
 
-pub fn upload_crosshair(tile: &AtlasTile) -> (u32, u32) {
-
-    let x = 500.0;
-    let y = 300.0;
-    let r = 100.0;
+    let size: i32 = 40;
+    let x: f32 = (window.fb_width / 2 - size / 2) as f32;
+    let y: f32 = (window.fb_height / 2 - size / 2) as f32;
+    let w: f32 = size as f32;
+    let h: f32 = size as f32;
 
     let quad_mesh: [f32; 24] = [
-        x-r, y-r, tile.x,  tile.y,
-        x+r, y-r, tile.xm, tile.y,
-        x+r, y+r, tile.xm, tile.ym,
+        x + w, y + h, tile.xm, tile.ym,
+        x + w, y, tile.xm, tile.y,
+        x, y, tile.x,  tile.y,
 
-        x-r, y-r, tile.x,  tile.y,
-        x-r, y+r, tile.x,  tile.ym,
-        x+r, y+r, tile.xm, tile.ym,
+        x, y, tile.xm, tile.ym,
+        x, y + h, tile.x,  tile.ym,
+        x + w, y + h, tile.x,  tile.y,
     ];
 
     let vertex_count = (quad_mesh.len() / 4) as u32;
@@ -56,12 +58,12 @@ pub fn upload_crosshair(tile: &AtlasTile) -> (u32, u32) {
     (vao, vbo)
 }
 
-pub fn render_crosshair(vao: u32, vbo: u32) {
+pub fn render_crosshair(vao: u32) {
     unsafe {
         gl::BindVertexArray(vao);
         
         gl::DrawArrays(gl::TRIANGLES, 0, 6);
 
-        //gl::BindVertexArray(0);
+        gl::BindVertexArray(0);
     }
 }

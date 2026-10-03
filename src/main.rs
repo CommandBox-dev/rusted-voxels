@@ -49,8 +49,9 @@ fn main() {
     let view_loc = unsafe {gl::GetUniformLocation(resource_manager.base_shader, c"u_view".as_ptr())};
     let projection_loc = unsafe {gl::GetUniformLocation(resource_manager.base_shader, c"u_projection".as_ptr())};
     let texture_loc = unsafe {gl::GetUniformLocation(resource_manager.base_shader, c"baseTexture".as_ptr())};
+    let ui_projection_loc = unsafe {gl::GetUniformLocation(resource_manager.ui_shader, c"u_projection".as_ptr())};
 
-    let (vao_crosshair, vbo_crosshair) = upload_crosshair(resource_manager.tile_atlas.get_tile(String::from("crosshair")));
+    let (vao_crosshair, vbo_crosshair) = upload_crosshair(resource_manager.tile_atlas.get_tile(String::from("crosshair")), & window);
 
     // game loop
     while !window.should_close() {
@@ -74,9 +75,11 @@ fn main() {
 
             chunk_renderer::render_chunks(&mut world, model_loc);
             
+            gl::BlendFunc(gl::ONE_MINUS_DST_COLOR, gl::ZERO);
             gl::UseProgram(resource_manager.ui_shader);
-            gl::UniformMatrix4fv(projection_loc, 1, gl::FALSE, window.ui_projection.to_cols_array().as_ptr());
-            render_crosshair(vao_crosshair, vbo_crosshair);
+            gl::UniformMatrix4fv(ui_projection_loc, 1, gl::FALSE, window.ui_projection.to_cols_array().as_ptr());
+            render_crosshair(vao_crosshair);
+            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
         }
         
         window.swap_buffers();

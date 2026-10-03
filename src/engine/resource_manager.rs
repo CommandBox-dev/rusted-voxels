@@ -20,7 +20,7 @@ impl ResourceManager {
             ui_shader: load_shader("./res/shaders/basic_ui.vert", "./res/shaders/basic_ui.frag"),
         };
 
-        let cobblestone = manual.tile_atlas.get_tile(String::from("cobblestone"));
+        let cobblestone = manual.tile_atlas.get_tile(String::from("stone"));
         let crate_tile = manual.tile_atlas.get_tile(String::from("crate"));
         let floor_tiling = manual.tile_atlas.get_tile(String::from("floor_tiling"));
         let grass_side = manual.tile_atlas.get_tile(String::from("grass_side"));
