@@ -38,7 +38,7 @@ impl TerrainGenerator {
         }
     }
 
-    pub fn generate_chunk_terrain(&self, chunk: &mut Chunk) {
+    pub fn generate_chunk_terrain(&self, chunk: &mut Chunk, total_block_count: u32) {
 
         for x in 0..CHUNK_WIDTH {
             for z in 0..CHUNK_WIDTH {
@@ -49,7 +49,7 @@ impl TerrainGenerator {
                 for y in 0..CHUNK_HEIGHT {
                     if (y as f32) < (value + 5.0) * 20.0 {
                         let index = chunk::voxel_index(x, y, z);
-                        chunk.block_data[index] = rand::random_range(1..=2);
+                        chunk.block_data[index] = 8; //rand::random_range(1..=total_block_count);
                         placed = true;
                         if rand::random_range(0..=1500) == 0 {chunk.block_data[index] = 3}
                     } else {

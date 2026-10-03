@@ -4,10 +4,18 @@ use glam::{Mat4, Vec2, Vec3};
 use crate::engine::{chunk::{self, Chunk}, chunk_renderer};
 use crate::engine::{world::{self, World}};
 
+
 pub fn upload_chunk_mesh(chunk: &mut Chunk, mesh: Vec<f32>) {
+
+    let float_size = std::mem::size_of::<f32>();
+    let mesh_byte_size = (mesh.len() as usize * float_size) as isize;
+    
+    let stride = 6 * float_size as i32; // pos, uv, l
+
     chunk.vertex_count = (mesh.len() / 6) as u32;
 
     unsafe {
+        
         // delete old mesh if one exists
         if chunk.vao != 0 {gl::DeleteVertexArrays(1, &chunk.vao);}
         if chunk.vbo != 0 {gl::DeleteBuffers(1, &chunk.vbo);}
@@ -18,44 +26,16 @@ pub fn upload_chunk_mesh(chunk: &mut Chunk, mesh: Vec<f32>) {
         gl::BindVertexArray(chunk.vao);
         gl::BindBuffer(gl::ARRAY_BUFFER, chunk.vbo);
 
-        let float_size = std::mem::size_of::<f32>();
-        let stride = 6 * float_size as i32; // pos, uv, l
+        gl::BufferData(gl::ARRAY_BUFFER, mesh_byte_size, mesh.as_ptr() as *const _, gl::STATIC_DRAW);
 
-        gl::BufferData(
-            gl::ARRAY_BUFFER,
-            (mesh.len() as usize * float_size) as isize,
-            mesh.as_ptr() as *const _,
-             gl::STATIC_DRAW
-        );
         // position
-        gl::VertexAttribPointer(
-            0,
-            3,
-            gl::FLOAT,
-            gl::FALSE,
-            stride,
-            std::ptr::null()
-        );
+        gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, stride, std::ptr::null());
         gl::EnableVertexAttribArray(0);
         // uv
-        gl::VertexAttribPointer(
-            1,
-            2,
-            gl::FLOAT,
-            gl::FALSE,
-            stride,
-            (3 * float_size) as *const _
-        );
+        gl::VertexAttribPointer(1, 2, gl::FLOAT, gl::FALSE, stride, (3 * float_size) as *const _);
         gl::EnableVertexAttribArray(1);
         // light
-        gl::VertexAttribPointer(
-            2,
-            1,
-            gl::FLOAT,
-            gl::FALSE,
-            stride,
-            (5 * float_size) as *const _
-        );
+        gl::VertexAttribPointer(2, 1, gl::FLOAT, gl::FALSE, stride, (5 * float_size) as *const _);
         gl::EnableVertexAttribArray(2);
         
         gl::BindVertexArray(0);
@@ -78,7 +58,6 @@ pub fn render_chunks(world: &mut World, model_loc: i32) {
 
             let chunk = world.get_chunk(x as i32, z as i32);
             if let Some(chunk) = chunk {
-                //println!("chunk render x: {}, z: {}", x, z);
                 chunk_renderer::render_chunk_mesh(&chunk, model_loc);
             }
         }

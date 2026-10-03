@@ -9,6 +9,8 @@ use rand::rand_core::utils::Word;
 use crate::engine::character_controller::CharacterState;
 use crate::engine::physics::aabb::*;
 use crate::engine::input::Input;
+use crate::engine::renderer::render_crosshair;
+use crate::engine::renderer::upload_crosshair;
 use crate::engine::resource_manager::ResourceManager;
 use crate::engine::window::GameWindow;
 use crate::engine::*;
@@ -33,8 +35,8 @@ fn main() {
     let world_mid = ((world::RENDER_DISTANCE / 2) * CHUNK_WIDTH as u32) as f32;
     
     let mut camera = engine::camera::Camera::new(
-        Vec3::new(world_mid, 105.0, world_mid),
-        180.0,
+        Vec3::new(world_mid, 200.0, world_mid),
+        90.0,
         0.0,
         window.fb_width as u32,
         window.fb_height as u32,
@@ -47,6 +49,8 @@ fn main() {
     let view_loc = unsafe {gl::GetUniformLocation(resource_manager.base_shader, c"u_view".as_ptr())};
     let projection_loc = unsafe {gl::GetUniformLocation(resource_manager.base_shader, c"u_projection".as_ptr())};
     let texture_loc = unsafe {gl::GetUniformLocation(resource_manager.base_shader, c"baseTexture".as_ptr())};
+
+    let (vao_crosshair, vbo_crosshair) = upload_crosshair(resource_manager.tile_atlas.get_tile(String::from("crosshair")));
 
     // game loop
     while !window.should_close() {
@@ -61,8 +65,8 @@ fn main() {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
             
             gl::UseProgram(resource_manager.base_shader);
+           
             bind(resource_manager.tile_atlas.id, 0);
-            
             gl::UniformMatrix4fv(view_loc, 1, gl::FALSE, camera.view.to_cols_array().as_ptr());
             gl::UniformMatrix4fv(projection_loc, 1, gl::FALSE, camera.projection.to_cols_array().as_ptr());
 
@@ -70,7 +74,9 @@ fn main() {
 
             chunk_renderer::render_chunks(&mut world, model_loc);
             
-            gl::BindVertexArray(0);
+            gl::UseProgram(resource_manager.ui_shader);
+            gl::UniformMatrix4fv(projection_loc, 1, gl::FALSE, window.ui_projection.to_cols_array().as_ptr());
+            render_crosshair(vao_crosshair, vbo_crosshair);
         }
         
         window.swap_buffers();

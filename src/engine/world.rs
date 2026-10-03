@@ -4,7 +4,7 @@ use glam::*;
 
 use crate::engine::{block_model::BlockModel, chunk::{self, Chunk}, chunk_mesher, chunk_renderer, terrain_generator::{self, TerrainGenerator}, world};
 
-pub const RENDER_DISTANCE: u32 = 20;
+pub const RENDER_DISTANCE: u32 = 10;
 pub const RENDER_AREA: u32 = RENDER_DISTANCE * RENDER_DISTANCE;
 
 pub struct World {
@@ -31,7 +31,7 @@ impl World {
                 chunks[index as usize] = Some(Chunk::new(x as i32, z as i32));
                 let chunk = chunks[index as usize].as_mut();
                 if let Some(mut chunk) = chunk {
-                    chunk_generator.generate_chunk_terrain(&mut chunk);
+                    chunk_generator.generate_chunk_terrain(&mut chunk, block_models.len() as u32);
                 }
                 &dirty_chunks.push(index);
                 

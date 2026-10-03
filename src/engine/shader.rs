@@ -82,6 +82,7 @@ fn link_program(vertex_shader: u32, fragment_shader: u32) -> Result<u32, String>
 
             return Err(log);
         }
+        println!("successfully linked shader!");
     }
 
     Ok(program)

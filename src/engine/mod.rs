@@ -13,3 +13,4 @@ pub mod terrain_generator;
 pub mod resource_manager;
 pub mod input;
 pub mod character_controller;
+pub mod renderer;

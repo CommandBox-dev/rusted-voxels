@@ -4,7 +4,6 @@ use crate::engine::{chunk::{self, Chunk}, world::World};
 
 pub fn cast_ray(origin: Vec3, dir: Vec3, length: f32, world: &mut World) -> RayResult {
     // direction needs to be normalized
-    // chunk is passed as an parameter for now
     let mut result: RayResult = RayResult::new();
 
     let dx = dir.x;

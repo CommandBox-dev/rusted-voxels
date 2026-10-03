@@ -1,5 +1,6 @@
 use std::time::Instant;
 
+use glam::Mat4;
 use glfw::*;
 
 use crate::engine::input::Input;
@@ -14,6 +15,8 @@ pub struct GameWindow {
     // framebuffer, in pixels
     pub fb_width: i32,
     pub fb_height: i32,
+
+    pub ui_projection: Mat4,
 
     // viewport is a rendering region on framebuffer
     // ui, mouse and window should use window coordinate system
@@ -72,6 +75,7 @@ impl GameWindow { // renamed Window to GameWindow to avoid confusion with the gl
             height,
             fb_width,
             fb_height,
+            ui_projection: Mat4::orthographic_rh_gl(0.0, fb_width as f32, fb_height as f32, 0.0, -1.0, 1.0),
             time: 0.0,
             delta: 0.0,
             start_time: Instant::now(),
