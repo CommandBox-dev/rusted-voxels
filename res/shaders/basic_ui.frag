@@ -10,5 +10,6 @@ void main()
 {
     vec4 tex = texture(baseTexture, uv);
     if (tex.a <= 0.1) discard;
+
     FragColor = tex;
 }

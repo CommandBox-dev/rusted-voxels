@@ -1,6 +1,6 @@
 use crate::chunk::*;
 use crate::world::*;
-use crate::block_model::*;
+use crate::blocks::block_model::*;
 
 
 pub const VERTICES: [f32; 108 + 72] = [

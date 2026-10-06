@@ -64,7 +64,7 @@ pub fn bind(id: u32, unit: u32) {
 }
 
 pub fn load_texture_from_path(path: &str) -> u32 {
-    upload_texture(&image::open(path).expect("Failed to load texture").flipv().into_rgba8())
+    upload_texture(&image::open(path).expect("Failed to load texture").into_rgba8()) // flipv()
 }
 
 pub fn load_texture_atlas(image_pool_path: &str) -> TextureAtlas {

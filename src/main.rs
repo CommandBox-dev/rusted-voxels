@@ -1,12 +1,14 @@
 #![allow(unused)]
 
 mod engine;
+mod game;
 
 use glfw::{Action, Context, Key, MouseButton, ffi::glfwGetFramebufferSize};
 use glam::{Mat4, Vec2, Vec3, IVec3};
 use rand::rand_core::utils::Word;
 
 use crate::engine::character_controller::CharacterState;
+use crate::engine::gui::basic_ui::UILabel;
 use crate::engine::physics::aabb::*;
 use crate::engine::input::Input;
 use crate::engine::renderer::render_crosshair;
@@ -18,7 +20,7 @@ use crate::engine::chunk::*;
 use crate::engine::world::*;
 use crate::engine::shader::*;
 use crate::engine::texture::*;
-use crate::engine::block_model::*;
+use crate::engine::blocks::block_model::*;
 use crate::engine::physics::*;
 use crate::engine::physics::aabb::move_and_collide;
 use crate::engine::physics::aabb::*;
@@ -51,6 +53,9 @@ fn main() {
     let texture_loc = unsafe {gl::GetUniformLocation(resource_manager.base_shader, c"baseTexture".as_ptr())};
     let ui_projection_loc = unsafe {gl::GetUniformLocation(resource_manager.ui_shader, c"u_projection".as_ptr())};
 
+    let font_tex = load_texture_from_path("./res/textures/ui/font.png");
+    let mut label = UILabel::new(15, 15);
+
     let (vao_crosshair, vbo_crosshair) = upload_crosshair(resource_manager.tile_atlas.get_tile(String::from("crosshair")), & window);
 
     // game loop
@@ -64,6 +69,8 @@ fn main() {
         
         unsafe {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+
+            label.build_text_mesh(&format!("x: {:.3}, y: {:.3}, z: {:.3}", camera.position.x, camera.position.y, camera.position.z));
             
             gl::UseProgram(resource_manager.base_shader);
            
@@ -80,6 +87,8 @@ fn main() {
             gl::UniformMatrix4fv(ui_projection_loc, 1, gl::FALSE, window.ui_projection.to_cols_array().as_ptr());
             render_crosshair(vao_crosshair);
             gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+            bind(font_tex, 0);
+            label.render();
         }
         
         window.swap_buffers();

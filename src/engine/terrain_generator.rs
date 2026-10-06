@@ -45,8 +45,13 @@ impl TerrainGenerator {
         terra_gen.biome_noise.set_seed(Some(275));
         terra_gen.biome_noise.set_fractal_octaves(Some(3));
 
+        terra_gen.noise.set_frequency(Some(0.015));
+        terra_gen.noise.set_domain_warp_amp(Some(25.0));
+
         terra_gen.overhang_noise.set_seed(Some(9334));
         terra_gen.overhang_noise.set_fractal_octaves(Some(4));
+        terra_gen.overhang_noise.set_frequency(Some(0.01));
+        terra_gen.overhang_noise.set_domain_warp_amp(Some(25.0));
 
         terra_gen
     }
@@ -63,7 +68,7 @@ impl TerrainGenerator {
                 for y in 0..CHUNK_HEIGHT {
                     let overhang_noise = self.noise.get_noise_3d((x + chunk.cbx) as f32 * 2.0, y as f32 * 1.5, (z + chunk.cbz) as f32 * 2.0);
 
-                    if (y as f32) < (value + 5.0) * 20.0 || overhang_noise * y as f32 * (1.0 - y as f32) > 45.0 {
+                    if (y as f32) < (value + overhang_noise) * 50.0 { //|| overhang_noise * y as f32 * (1.0 - y as f32) > 45.0 {
                         let index = chunk::voxel_index(x, y, z);
                         chunk.block_data[index] = 8; //rand::random_range(1..=total_block_count);
                         placed = true;
@@ -71,7 +76,7 @@ impl TerrainGenerator {
                     } else {
                         if placed {
                             placed = false;
-                            chunk.block_data[voxel_index(x, y, z)] = if biome > 0.5 {3} else {4};
+                            chunk.block_data[voxel_index(x, y, z)] = if biome > 0.5 {3} else {4}; // § $
                         }
                     }
                 }

@@ -1,4 +1,4 @@
-use crate::engine::{self, block_model::BlockModel, texture::{TextureAtlas, load_texture_atlas}, shader::*};
+use crate::engine::{self, blocks::block_model::BlockModel, texture::{TextureAtlas, load_texture_atlas}, shader::*};
 
 pub struct ResourceManager {
     pub tile_atlas: TextureAtlas,
@@ -67,3 +67,17 @@ impl ResourceManager {
 
     }
 }
+
+pub enum BlockModelRotations {
+    NONE,
+    ONE,
+    TWO,
+    THREE,
+}
+
+pub enum BlockModelMirrors {
+    NONE,
+    MIRRORED,
+}
+
+pub fn mirror_face_x() {}

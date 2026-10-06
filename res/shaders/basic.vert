@@ -10,15 +10,16 @@ uniform mat4 u_projection;
 
 out vec2 uv;
 out float light;
+out float dist;
 
 void main()
 {
     uv = v_uv;
     light = v_light;
 
-    gl_Position =
-        u_projection *
-        u_view *
-        u_model *
-        vec4(v_position, 1.0);
+    vec4 finalPos = u_view * u_model * vec4(v_position, 1.0);
+
+    dist = length(finalPos.xyz);
+
+    gl_Position = u_projection * finalPos;
 }
