@@ -72,8 +72,6 @@ fn main() {
     let mut frame = UIFrame::new(window.width, window.height, AnchorCentered);
     let mut label = UILabel::new(15, 15, "", AnchorBottomLeft);
     let mut chat_label = UILabel::new(15, 900, "Rusted-Voxels-v0.01", AnchorMidRight);
-    let mut ui_button = UIButton::new(window.fb_width as u32 / 2, window.fb_height as u32 / 2, 42 * 10, 13 * 10, "Return", AnchorCentered);
-    let mut ui_toggle = UICheckBox::new(window.fb_width as u32 / 2, window.fb_height as u32 / 2 + 300, 120, false, AnchorCentered);
     // impl get and set functions for some structs
 
     'game_loop: while !window.should_close() {
@@ -87,13 +85,10 @@ fn main() {
         }
 
         if let Some(world) = &mut world {world.update();}
-
-        
-        if ui_button.down {camera.position.y += 0.5;}
         
         if camera.position.y < -10.0 {camera.position.y = 200.0}
         if let Some(world) = &mut world {character_controller.update(&mut camera, &input, world, &mut window);}
-        menu_manager.update(&input);
+        menu_manager.update(&input, &window);
         
         label.build_text_mesh(&format!("x: {:.3}, y: {:.3}, z: {:.3}", camera.position.x, camera.position.y + AABB::HUMANOID.min.y, camera.position.z));
         if let Some(world) = &mut world {world.update_dirty_chunks(&resource_manager.block_models);}
@@ -110,8 +105,6 @@ fn main() {
             &window.ui_projection,
             vao_crosshair,
             &input,
-            &mut ui_button,
-            &mut ui_toggle,
             &label,
             &chat_label,
             &menu_manager,

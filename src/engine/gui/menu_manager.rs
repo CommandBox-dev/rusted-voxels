@@ -32,11 +32,11 @@ impl MenuManager {
         }
     }
     
-    pub fn update(&mut self, input: &Input) {
+    pub fn update(&mut self, input: &Input, window: &GameWindow) {
         match &self.selected_menu {
             Menu::NoMenu => return,
 
-            Menu::MenuMain => if let Some(new_menu) = self.main_menu.update(input) {self.selected_menu = new_menu;},
+            Menu::MenuMain => if let Some(new_menu) = self.main_menu.update(input, window) {self.selected_menu = new_menu;},
 
             _ => return,
         }
@@ -72,9 +72,13 @@ impl MainMenu {
         }
     }
 
-    fn update(&mut self, input: &Input) -> Option<Menu> {
-        self.button1.cursor_update(input.mouse_x, input.mouse_y, input.is_mouse_button_down(MouseButton::Left as i32));
-        self.button2.cursor_update(input.mouse_x, input.mouse_y, input.is_mouse_button_pressed(MouseButton::Left as i32));
+    fn update(&mut self, input: &Input, window: &GameWindow) -> Option<Menu> {
+
+        let mx = (window.fb_width as f32 * (input.mouse_x as f32 / window.width as f32)) as u32;
+        let my = (window.fb_height as f32 * (input.mouse_y as f32 / window.height as f32)) as u32;
+
+        self.button1.cursor_update(mx, my, input.is_mouse_button_down(MouseButton::Left as i32));
+        self.button2.cursor_update(mx, my, input.is_mouse_button_pressed(MouseButton::Left as i32));
         if self.button1.down {return Some(NoMenu);}
         None
     }

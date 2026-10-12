@@ -335,10 +335,6 @@ fn destroy_rect(model: &mut UIModelC) {
 
 
 
-
-
-
-
 impl UIElement for UILabel {
     fn get_transform(&self) -> &UITransformC {&self.transform}
     fn get_mut_transform(&mut self) -> &mut UITransformC {&mut self.transform}
@@ -473,7 +469,6 @@ impl UILabel {
         }
     }
 }
-
 
 
 impl UIElement for UIButton {

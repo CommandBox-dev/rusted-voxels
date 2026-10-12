@@ -113,8 +113,6 @@ impl RenderingServer {
          world: &mut Option<World>, ui_proj: &Mat4,
          vao_crosshair: u32,
          input: &Input,
-         ui_button: &mut UIButton,
-         ui_toggle: &mut UICheckBox,
          label: &UILabel,
          chat_label: &UILabel,
          menu_manager: &MenuManager,
