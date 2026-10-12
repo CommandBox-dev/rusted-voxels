@@ -1,11 +1,13 @@
+use std::ops::Add;
+
 use glam::{Vec2, Vec3};
 use glfw::*;
 
-use crate::engine::camera::Camera;
-use crate::engine::input::Input;
+use crate::engine::rendering::camera::Camera;
+use crate::engine::core::input::Input;
 use crate::engine::physics::aabb::{AABB, move_and_collide};
-use crate::engine::window::GameWindow;
-use crate::engine::world::World;
+use crate::engine::core::window::GameWindow;
+use crate::engine::world::world::World;
 use crate::engine::physics::raycast;
 
     
@@ -24,7 +26,7 @@ impl CharacterState {
     pub fn new() -> Self {
         Self {
             escape: false,
-            selected_block: 3,
+            selected_block: 16, // 5
             is_on_floor: false,
             velocity: Vec3::ZERO,
         }
@@ -33,7 +35,7 @@ impl CharacterState {
     pub fn update(&mut self, camera: &mut Camera, input: &Input, mut world: &mut World, window: &mut GameWindow) {
 
         // breaking
-        if input.is_mouse_button_pressed(MouseButton::Left as i32) {
+        if !self.escape && input.is_mouse_button_pressed(MouseButton::Left as i32) {
             let result = raycast::cast_ray(camera.position, camera.front, 15.0, &mut world);
             if result.hit {
                 world.set_block(
@@ -46,7 +48,7 @@ impl CharacterState {
         }
 
         // placing
-        if input.is_mouse_button_pressed(MouseButton::Right as i32) {
+        if !self.escape && input.is_mouse_button_pressed(MouseButton::Right as i32) {
             let result = raycast::cast_ray(camera.position, camera.front, 15.0, &mut world);
             if result.hit {
                 world.set_block(
@@ -59,10 +61,18 @@ impl CharacterState {
         }
 
         // block selecting
-        if input.is_mouse_button_pressed(MouseButton::Middle as i32) {
+        if !self.escape && input.is_mouse_button_pressed(MouseButton::Middle as i32) {
             let result = raycast::cast_ray(camera.position, camera.front, 15.0, &mut world);
             if result.hit {
                 self.selected_block = result.hit_block;
+            }
+        }
+
+        if !self.escape && input.is_pressed(Key::P as i32) {
+            let result = raycast::cast_ray(camera.position, camera.front, 15.0, &mut world);
+            if result.hit {
+                let hit = result.hit_position.clone().add(result.hit_normal);
+                world.generate_maze(hit.x, hit.y, hit.z);
             }
         }
 
@@ -104,13 +114,13 @@ impl CharacterState {
         if input.is_down(Key::A as i32) {
             left = 1;
         }
-        if input.is_down(Key::Space as i32) {
+        if !self.escape && input.is_down(Key::Space as i32) {
             self.velocity.y = 0.1;
         } else {
             self.velocity.y += (-9.8 * 0.045 * window.delta);
         }
         
-        let movement_input = Vec2::new((front - back) as f32, -(right - left) as f32);
+        let movement_input = if self.escape {Vec2::ZERO} else {Vec2::new((front - back) as f32, -(right - left) as f32)};
         let mut speed = 5.0;
         
         if input.is_down(Key::LeftShift as i32) {
@@ -119,7 +129,6 @@ impl CharacterState {
         
         let vel_y = self.velocity.y;
         self.velocity.y *= 0.90;
-
         self.velocity = camera.forward * movement_input.x * window.delta * speed;
         self.velocity += camera.right * movement_input.y * window.delta * speed;
         self.velocity.y += vel_y;

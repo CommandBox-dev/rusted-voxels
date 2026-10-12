@@ -1,6 +1,6 @@
 use glfw::{ffi::{GLFW_KEY_LAST, GLFW_MOUSE_BUTTON_LAST, glfwSetKeyCallback}};
 use glfw::*;
-use crate::engine::window::*;
+use crate::engine::core::window::*;
 
 pub struct Input {
     // keys
@@ -9,6 +9,8 @@ pub struct Input {
     released: [bool; (GLFW_KEY_LAST + 1) as usize],
     // mouse
     first_mouse: bool,
+    pub mouse_x: u32,
+    pub mouse_y: u32,
     last_mouse_x: f32,
     last_mouse_y: f32,
     mouse_move_x: f32,
@@ -26,6 +28,8 @@ impl Input {
             pressed: [false; (GLFW_KEY_LAST + 1) as usize],
             released: [false; (GLFW_KEY_LAST + 1) as usize],
 
+            mouse_x: 0,
+            mouse_y: 0,
             last_mouse_x: window.width as f32 / 2.0,
             last_mouse_y: window.height as f32 / 2.0,
             mouse_move_x: 0.0,
@@ -50,6 +54,7 @@ impl Input {
 
             if let WindowEvent::Key(key, _, action, _) = event {
                 let index = key as usize;
+                if index > GLFW_KEY_LAST as usize {continue;}
 
                 match action {
                     Action::Press =>  {
@@ -65,6 +70,8 @@ impl Input {
 
             } else if let glfw::WindowEvent::CursorPos(x, y) = event {
 
+                self.mouse_x = x as u32;
+                self.mouse_y = y as u32;
                 let x = x as f32;
                 let y = y as f32;
 

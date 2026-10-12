@@ -68,7 +68,7 @@ impl Camera {
             pitch.cos() * yaw.cos()
         ).normalize();
 
-        //right
+        // right
         self.right = Vec3::new(
             yaw.cos(),
             0.0,

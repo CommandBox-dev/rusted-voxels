@@ -3,7 +3,7 @@ use std::time::Instant;
 use glam::Mat4;
 use glfw::*;
 
-use crate::engine::input::Input;
+use crate::engine::core::input::Input;
 
 pub struct GameWindow {
     pub handle: PWindow,

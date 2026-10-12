@@ -1,7 +1,7 @@
 use crate::game::blocks::*;
 
 enum Blocks {
-    //GrassBlock(Gra)
+    // GrassBlock()
 }
 
 pub struct Block {

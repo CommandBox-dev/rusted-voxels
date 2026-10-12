@@ -1,6 +1,6 @@
 use std::alloc::System;
 
-use crate::engine::{world::{self, World}};
+use crate::engine::{world::{self, world::World}};
 
 pub static CHUNK_WIDTH: i32 = 16;
 pub static CHUNK_HEIGHT: i32 = 256;
@@ -13,6 +13,17 @@ pub static CHUNK_VOLUME: i32 = CHUNK_AREA * CHUNK_HEIGHT;
 // lx, ly, lz = local block coordinates
 // gx, gy, gz = global block coordinates
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum GenerationStep {
+    Empty,
+    Terrain,
+    TerrainFeatures,
+    Structures,
+    DirectLight,
+    IndirectLight,
+    Complete,
+}
+
 pub struct Chunk {
     pub cx: i32,
     pub cz: i32,
@@ -21,9 +32,12 @@ pub struct Chunk {
 
     pub block_data: Box<[u32; CHUNK_VOLUME as usize]>,
     //pub blocks_filled: bool,
-    //pub fill_block: u32, // the block if every block in this chunk is the same
+    //pub fill_block: u32, // the fill block if every block in this chunk is the same
     //pub palette: Vec<u32>, // palette index -> block
     //pub palette_indices: Vec<u32>, // block -> palette index
+
+    pub generation_step: GenerationStep,
+    pub dirty: bool,
 
     // mesh
     pub vao: u32,
@@ -49,6 +63,8 @@ impl Chunk {
             cbx,
             cbz,
             block_data,
+            generation_step: GenerationStep::Empty,
+            dirty: false,
             vao: 0,
             vbo: 0,
             vertex_count: 0,

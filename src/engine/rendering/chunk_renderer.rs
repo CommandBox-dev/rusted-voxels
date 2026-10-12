@@ -1,8 +1,8 @@
 use glfw::*;
 
 use glam::{Mat4, Vec2, Vec3};
-use crate::engine::{chunk::{self, Chunk}, chunk_renderer};
-use crate::engine::{world::{self, World}};
+use crate::engine::{world::chunk::{self, Chunk}, rendering::chunk_renderer};
+use crate::engine::{world::world::{self, World}};
 
 
 pub fn upload_chunk_mesh(chunk: &mut Chunk, mesh: Vec<f32>) {

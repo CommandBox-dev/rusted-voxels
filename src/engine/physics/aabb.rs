@@ -1,5 +1,5 @@
 use glam::{Vec3};
-use crate::engine::world::World;
+use crate::engine::world::world::World;
 
 const EPSILON: f32 = 0.0001;
 
@@ -26,12 +26,12 @@ pub struct CollisionResult {
     // slide collisions
 }
 
-pub fn move_and_collide(world: &World, position: &Vec3, velocity: &mut Vec3, hit_box: &AABB) -> CollisionResult {
 
+pub fn move_and_collide(world: &World, position: &Vec3, velocity: &mut Vec3, hit_box: &AABB) -> CollisionResult {
     let mut result = CollisionResult {
         is_on_floor: false,
     };
-
+    
     // TODO: calculate axis with the heighest velocity first
     velocity.x = move_axis_x(world, position, velocity.x, hit_box, &mut result);
     velocity.y = move_axis_y(world, position, velocity.y, hit_box, &mut result);
@@ -40,8 +40,7 @@ pub fn move_and_collide(world: &World, position: &Vec3, velocity: &mut Vec3, hit
     result
 }
 
-fn move_axis_x(world: &World, position: &Vec3, v: f32, hit_box: &AABB, result: &mut CollisionResult) -> f32 {
-    
+fn move_axis_x(world: &World, position: &Vec3, v: f32, hit_box: &AABB, _result: &mut CollisionResult) -> f32 {
     if v == 0.0 {return 0.0;}
 
     let min_y = position.y + hit_box.min.y;
@@ -49,9 +48,9 @@ fn move_axis_x(world: &World, position: &Vec3, v: f32, hit_box: &AABB, result: &
     let min_z = position.z + hit_box.min.z;
     let max_z = position.z + hit_box.max.z;
 
-    let min_block_y = min_y.floor() as i32;
+    let min_block_y = (min_y + EPSILON).floor() as i32;
     let max_block_y = (max_y - EPSILON).floor() as i32;
-    let min_block_z = min_z.floor() as i32;
+    let min_block_z = (min_z + EPSILON).floor() as i32;
     let max_block_z = (max_z - EPSILON).floor() as i32;
 
     if v > 0.0 {
@@ -60,11 +59,14 @@ fn move_axis_x(world: &World, position: &Vec3, v: f32, hit_box: &AABB, result: &
         let start = max_x.ceil() as i32;
         let end = new_max_x.ceil() as i32 - 1;
 
-        for bx in start..=end {
-            for y in min_block_y..=max_block_y {
-                for z in min_block_z..=max_block_z {
-                    if world.get_block(bx, y, z) > 0 {
-                        return (bx as f32 - max_x).max(0.0);
+        if start <= end {
+            for bx in start..=end {
+                for y in min_block_y..=max_block_y {
+                    for z in min_block_z..=max_block_z {
+                        if world.get_block(bx, y, z) > 0 {
+                            let correction = bx as f32 - max_x;
+                            return if correction < 0.0 {0.0} else {correction};
+                        }
                     }
                 }
             }
@@ -75,11 +77,14 @@ fn move_axis_x(world: &World, position: &Vec3, v: f32, hit_box: &AABB, result: &
         let start = min_x.ceil() as i32 - 1;
         let end = new_min_x.ceil() as i32 - 1;
 
-        for bx in (end..=start).rev() {
-            for y in min_block_y..=max_block_y {
-                for z in min_block_z..=max_block_z {
-                    if world.get_block(bx, y, z) > 0 {
-                        return ((bx + 1) as f32 - min_x).min(0.0);
+        if end <= start {
+            for bx in (end..=start).rev() {
+                for y in min_block_y..=max_block_y {
+                    for z in min_block_z..=max_block_z {
+                        if world.get_block(bx, y, z) > 0 {
+                            let correction = (bx + 1) as f32 - min_x;
+                            return if correction > 0.0 {0.0} else {correction};
+                        }
                     }
                 }
             }
@@ -89,7 +94,6 @@ fn move_axis_x(world: &World, position: &Vec3, v: f32, hit_box: &AABB, result: &
 }
 
 fn move_axis_y(world: &World, position: &Vec3, v: f32, hit_box: &AABB, result: &mut CollisionResult) -> f32 {
-
     if v == 0.0 {return 0.0;}
 
     let min_x = position.x + hit_box.min.x;
@@ -97,10 +101,11 @@ fn move_axis_y(world: &World, position: &Vec3, v: f32, hit_box: &AABB, result: &
     let min_z = position.z + hit_box.min.z;
     let max_z = position.z + hit_box.max.z;
 
-    let min_block_x = min_x.floor() as i32;
+    let min_block_x = (min_x + EPSILON).floor() as i32;
     let max_block_x = (max_x - EPSILON).floor() as i32;
-    let min_block_z = min_z.floor() as i32;
+    let min_block_z = (min_z + EPSILON).floor() as i32;
     let max_block_z = (max_z - EPSILON).floor() as i32;
+
 
     if v > 0.0 {
         let max_y = position.y + hit_box.max.y;
@@ -108,11 +113,14 @@ fn move_axis_y(world: &World, position: &Vec3, v: f32, hit_box: &AABB, result: &
         let start = max_y.ceil() as i32;
         let end = new_max_y.ceil() as i32 - 1;
 
-        for x in min_block_x..=max_block_x {
-            for by in start..=end {
-                for z in min_block_z..=max_block_z {
-                    if world.get_block(x, by, z) > 0 {
-                        return (by as f32 - max_y).max(0.0);
+        if start <= end {
+            for x in min_block_x..=max_block_x {
+                for by in start..=end {
+                    for z in min_block_z..=max_block_z {
+                        if world.get_block(x, by, z) > 0 {
+                            let correction = by as f32 - max_y;
+                            return if correction < 0.0 {0.0} else {correction};
+                        }
                     }
                 }
             }
@@ -123,12 +131,15 @@ fn move_axis_y(world: &World, position: &Vec3, v: f32, hit_box: &AABB, result: &
         let start = min_y.ceil() as i32 - 1;
         let end = new_min_y.ceil() as i32 - 1;
 
-        for x in min_block_x..=max_block_x {
-            for by in (end..=start).rev() {
-                for z in min_block_z..=max_block_z {
-                    if world.get_block(x, by, z) > 0 {
-                        result.is_on_floor = true;
-                        return ((by + 1) as f32 - min_y).min(0.0);
+        if end <= start {
+            for x in min_block_x..=max_block_x {
+                for by in (end..=start).rev() {
+                    for z in min_block_z..=max_block_z {
+                        if world.get_block(x, by, z) > 0 {
+                            result.is_on_floor = true;
+                            let correction = (by + 1) as f32 - min_y;
+                            return if correction > 0.0 {0.0} else {correction};
+                        }
                     }
                 }
             }
@@ -137,8 +148,7 @@ fn move_axis_y(world: &World, position: &Vec3, v: f32, hit_box: &AABB, result: &
     v
 }
 
-fn move_axis_z(world: &World, position: &Vec3, v: f32, hit_box: &AABB, result: &mut CollisionResult) -> f32 {
-    
+fn move_axis_z(world: &World, position: &Vec3, v: f32, hit_box: &AABB, _result: &mut CollisionResult) -> f32 {
     if v == 0.0 {return 0.0;}
 
     let min_x = position.x + hit_box.min.x;
@@ -146,9 +156,9 @@ fn move_axis_z(world: &World, position: &Vec3, v: f32, hit_box: &AABB, result: &
     let min_y = position.y + hit_box.min.y;
     let max_y = position.y + hit_box.max.y;
 
-    let min_block_x = min_x.floor() as i32;
+    let min_block_x = (min_x + EPSILON).floor() as i32;
     let max_block_x = (max_x - EPSILON).floor() as i32;
-    let min_block_y = min_y.floor() as i32;
+    let min_block_y = (min_y + EPSILON).floor() as i32;
     let max_block_y = (max_y - EPSILON).floor() as i32;
 
     if v > 0.0 {
@@ -157,11 +167,14 @@ fn move_axis_z(world: &World, position: &Vec3, v: f32, hit_box: &AABB, result: &
         let start = max_z.ceil() as i32;
         let end = new_max_z.ceil() as i32 - 1;
 
-        for x in min_block_x..=max_block_x {
-            for y in min_block_y..=max_block_y {
-                for bz in start..=end {
-                    if world.get_block(x, y, bz) > 0 {
-                        return (bz as f32 - max_z).max(0.0);
+        if start <= end {
+            for x in min_block_x..=max_block_x {
+                for y in min_block_y..=max_block_y {
+                    for bz in start..=end {
+                        if world.get_block(x, y, bz) > 0 {
+                            let correction = bz as f32 - max_z;
+                            return if correction < 0.0 {0.0} else {correction};
+                        }
                     }
                 }
             }
@@ -172,11 +185,14 @@ fn move_axis_z(world: &World, position: &Vec3, v: f32, hit_box: &AABB, result: &
         let start = min_z.ceil() as i32 - 1;
         let end = new_min_z.ceil() as i32 - 1;
 
-        for x in min_block_x..=max_block_x {
-            for y in min_block_y..=max_block_y {
-                for bz in (end..=start).rev() {
-                    if world.get_block(x, y, bz) > 0 {
-                        return ((bz + 1) as f32 - min_z).min(0.0);
+        if end <= start {
+            for x in min_block_x..=max_block_x {
+                for y in min_block_y..=max_block_y {
+                    for bz in (end..=start).rev() {
+                        if world.get_block(x, y, bz) > 0 {
+                            let correction = (bz + 1) as f32 - min_z;
+                            return if correction > 0.0 { 0.0 } else {correction};
+                        }
                     }
                 }
             }

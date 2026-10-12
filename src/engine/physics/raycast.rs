@@ -1,6 +1,6 @@
 use glam::{Vec3, IVec3};
 
-use crate::engine::{chunk::{self, Chunk}, world::World};
+use crate::engine::{world::chunk::{self, Chunk}, world::world::World};
 
 pub fn cast_ray(origin: Vec3, dir: Vec3, length: f32, world: &mut World) -> RayResult {
     // direction needs to be normalized

@@ -1,6 +1,6 @@
 use glam::Vec2;
 
-use crate::engine::texture::AtlasTile;
+use crate::engine::resources::texture::AtlasTile;
 
 pub struct BlockModel {
     solid_blocksites_mask: u32, // culls touching neigbor's block faces

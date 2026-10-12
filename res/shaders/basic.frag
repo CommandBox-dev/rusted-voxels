@@ -1,6 +1,6 @@
 #version 330 core
 
-uniform sampler2D baseTexture;
+uniform sampler2D u_texture;
 
 in vec2 uv;
 in float light;
@@ -14,7 +14,7 @@ const vec3 fog_color = vec3(0.8, 0.8, 0.8);
 
 void main()
 {
-    vec4 tex = texture(baseTexture, uv);
+    vec4 tex = texture(u_texture, uv);
     tex.rgb *= light;
 
     // fog

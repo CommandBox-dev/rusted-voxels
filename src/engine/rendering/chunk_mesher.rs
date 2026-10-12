@@ -1,5 +1,5 @@
-use crate::chunk::*;
-use crate::world::*;
+use crate::world::chunk::*;
+use crate::engine::world::world::*;
 use crate::blocks::block_model::*;
 
 
@@ -61,12 +61,12 @@ pub const VERTICES: [f32; 108 + 72] = [
 ];
 
 pub const NORMAL_LIGHT: [f32; 6] = [
-    0.75, // right
-    0.75, // left
-    1.0, // top
+    0.9, // right
+    0.9, // left
+    1.2, // top
     0.5, // bottom
-    0.65, // front
-    0.65, // back
+    0.7, // front
+    0.7, // back
 ];
 
 pub const AO_CURVE: [f32; 4] = [
