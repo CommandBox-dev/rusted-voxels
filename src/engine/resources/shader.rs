@@ -5,16 +5,19 @@ pub struct Shader {
 }
 
 impl Shader {
-
     pub fn load_from_file(vert_path: &str, frag_path: &str) -> Shader {
+        let vertex_source =
+            std::fs::read_to_string(vert_path).expect("Failed to read vertex shader");
+        let fragment_source =
+            std::fs::read_to_string(frag_path).expect("Failed to read fragment shader");
 
-        let vertex_source = std::fs::read_to_string(vert_path).expect("Failed to read vertex shader");
-        let fragment_source = std::fs::read_to_string(frag_path).expect("Failed to read fragment shader");
+        let vertex_shader = Shader::compile_shader(&vertex_source, gl::VERTEX_SHADER)
+            .expect("Vertex shader compilation failed");
+        let fragment_shader = Shader::compile_shader(&fragment_source, gl::FRAGMENT_SHADER)
+            .expect("Fragment shader compilation failed");
 
-        let vertex_shader = Shader::compile_shader(&vertex_source, gl::VERTEX_SHADER).expect("Vertex shader compilation failed");
-        let fragment_shader = Shader::compile_shader(&fragment_source, gl::FRAGMENT_SHADER).expect("Fragment shader compilation failed");
-
-        let handle = Shader::link_program(vertex_shader,fragment_shader).expect("Shader linking failed");
+        let handle =
+            Shader::link_program(vertex_shader, fragment_shader).expect("Shader linking failed");
 
         // the single shaders aren't needed anymore once linked
         unsafe {
@@ -22,7 +25,7 @@ impl Shader {
             gl::DeleteShader(fragment_shader);
         }
 
-        Shader {handle}
+        Shader { handle }
     }
 
     pub fn bind(&self) {
@@ -32,14 +35,12 @@ impl Shader {
     }
 
     pub fn get_unif_loc(&self, name: *const c_char) -> i32 {
-        unsafe {
-            gl::GetUniformLocation(self.handle, name)
-        }
+        unsafe { gl::GetUniformLocation(self.handle, name) }
     }
 
     fn compile_shader(source: &str, shader_type: u32) -> Result<u32, String> {
-
-        let c_source = CString::new(source).map_err(|_| "Shader source contains a null byte".to_string())?;
+        let c_source =
+            CString::new(source).map_err(|_| "Shader source contains a null byte".to_string())?;
         let shader;
 
         unsafe {
@@ -60,9 +61,16 @@ impl Shader {
 
                 let mut buffer = vec![0u8; len as usize];
 
-                gl::GetShaderInfoLog(shader, len, std::ptr::null_mut(), buffer.as_mut_ptr() as *mut i8,);
+                gl::GetShaderInfoLog(
+                    shader,
+                    len,
+                    std::ptr::null_mut(),
+                    buffer.as_mut_ptr() as *mut i8,
+                );
                 gl::DeleteShader(shader);
-                let log = String::from_utf8_lossy(&buffer).trim_end_matches('\0').to_string();
+                let log = String::from_utf8_lossy(&buffer)
+                    .trim_end_matches('\0')
+                    .to_string();
 
                 return Err(log);
             }
@@ -93,10 +101,17 @@ impl Shader {
 
                 let mut buffer = vec![0u8; len as usize];
 
-                gl::GetProgramInfoLog(program, len, std::ptr::null_mut(), buffer.as_mut_ptr() as *mut i8);
+                gl::GetProgramInfoLog(
+                    program,
+                    len,
+                    std::ptr::null_mut(),
+                    buffer.as_mut_ptr() as *mut i8,
+                );
                 gl::DeleteProgram(program);
 
-                let log = String::from_utf8_lossy(&buffer).trim_end_matches('\0').to_string();
+                let log = String::from_utf8_lossy(&buffer)
+                    .trim_end_matches('\0')
+                    .to_string();
 
                 return Err(log);
             }

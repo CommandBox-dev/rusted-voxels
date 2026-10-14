@@ -1,8 +1,9 @@
-pub mod resources;
-pub mod rendering;
-pub mod core;
+pub mod audio;
 pub mod blocks;
-pub mod physics;
-pub mod world;
+pub mod core;
 pub mod entities;
 pub mod gui;
+pub mod physics;
+pub mod rendering;
+pub mod resources;
+pub mod world;

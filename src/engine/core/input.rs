@@ -1,6 +1,6 @@
-use glfw::{ffi::{GLFW_KEY_LAST, GLFW_MOUSE_BUTTON_LAST, glfwSetKeyCallback}};
-use glfw::*;
 use crate::engine::core::window::*;
+use glfw::ffi::{GLFW_KEY_LAST, GLFW_MOUSE_BUTTON_LAST, glfwSetKeyCallback};
+use glfw::*;
 
 pub struct Input {
     // keys
@@ -21,7 +21,6 @@ pub struct Input {
 }
 
 impl Input {
-
     pub fn new(window: &GameWindow) -> Self {
         Self {
             down: [false; (GLFW_KEY_LAST + 1) as usize],
@@ -49,67 +48,65 @@ impl Input {
         self.mouse_released.fill(false);
         self.mouse_move_x = 0.0;
         self.mouse_move_y = 0.0;
+    }
 
-        for (_, event) in glfw::flush_messages(&window.events) {
+    pub fn read_window_event(&mut self, event: WindowEvent) {
+        if let WindowEvent::Key(key, _, action, _) = event {
+            let index = key as usize;
+            if index > GLFW_KEY_LAST as usize {
+                return;
+            }
 
-            if let WindowEvent::Key(key, _, action, _) = event {
-                let index = key as usize;
-                if index > GLFW_KEY_LAST as usize {continue;}
-
-                match action {
-                    Action::Press =>  {
-                        self.pressed[index] = true;
-                        self.down[index] = true;
-                    }
-                    Action::Release =>  {
-                        self.released[index] = true;
-                        self.down[index] = false;
-                    }
-                    Action::Repeat =>  {}
+            match action {
+                Action::Press => {
+                    self.pressed[index] = true;
+                    self.down[index] = true;
                 }
-
-            } else if let glfw::WindowEvent::CursorPos(x, y) = event {
-
-                self.mouse_x = x as u32;
-                self.mouse_y = y as u32;
-                let x = x as f32;
-                let y = y as f32;
-
-                if self.first_mouse {
-                    self.last_mouse_x = x;
-                    self.last_mouse_y = y;
-                    self.first_mouse = false;
-                    continue;
+                Action::Release => {
+                    self.released[index] = true;
+                    self.down[index] = false;
                 }
+                Action::Repeat => {}
+            }
+        } else if let glfw::WindowEvent::CursorPos(x, y) = event {
+            self.mouse_x = x as u32;
+            self.mouse_y = y as u32;
+            let x = x as f32;
+            let y = y as f32;
 
-                let mut x_offset = x - self.last_mouse_x;
-                let mut y_offset = y - self.last_mouse_y;
-
+            if self.first_mouse {
                 self.last_mouse_x = x;
                 self.last_mouse_y = y;
+                self.first_mouse = false;
+                return;
+            }
 
-                let sensitivity = 0.1;
+            let mut x_offset = x - self.last_mouse_x;
+            let mut y_offset = y - self.last_mouse_y;
 
-                x_offset *= sensitivity;
-                y_offset *= sensitivity;
+            self.last_mouse_x = x;
+            self.last_mouse_y = y;
 
-                self.mouse_move_x = x_offset;
-                self.mouse_move_y = y_offset;
+            let sensitivity = 0.1;
 
-            } else if let glfw::WindowEvent::MouseButton(button, action, _) = event {
-                let index = button as usize;
+            x_offset *= sensitivity;
+            y_offset *= sensitivity;
 
-                match action {
-                    Action::Press =>  {
-                        self.mouse_pressed[index] = true;
-                        self.mouse_down[index] = true;
-                    }
-                    Action::Release =>  {
-                        self.mouse_released[index] = true;
-                        self.mouse_down[index] = false;
-                    }
-                    Action::Repeat =>  {}
+            self.mouse_move_x = x_offset;
+            self.mouse_move_y = y_offset;
+        } else if let glfw::WindowEvent::MouseButton(button, action, _) = event {
+            let index = button as usize;
+
+            match action {
+                Action::Press => {
+                    self.mouse_pressed[index] = true;
+                    self.mouse_down[index] = true;
                 }
+                Action::Release => {
+                    self.mouse_released[index] = true;
+                    self.mouse_down[index] = false;
+                }
+                Action::Repeat => {}
             }
         }
     }
@@ -144,5 +141,5 @@ impl Input {
 }
 
 pub struct Keybind {
-    key_id: i32 // just a single key per keybind for now
+    key_id: i32, // just a single key per keybind for now
 }

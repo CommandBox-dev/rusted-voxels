@@ -1,4 +1,7 @@
-use std::sync::{mpsc::{self, Receiver, Sender},Arc, Mutex,};
+use std::sync::{
+    Arc, Mutex,
+    mpsc::{self, Receiver, Sender},
+};
 use std::thread::{self, JoinHandle};
 
 type Job = Box<dyn FnOnce() + Send + 'static>;
@@ -41,7 +44,7 @@ impl Worker {
             });
             threads.push(thread);
         }
-        Self {sender, threads}
+        Self { sender, threads }
     }
 
     pub fn execute<F, R>(&self, job: F) -> Receiver<R>
@@ -50,7 +53,10 @@ impl Worker {
         R: Send + 'static,
     {
         let (result_sender, result_receiver) = mpsc::channel();
-        let job = Box::new(move || {let result = job(); let _ = result_sender.send(result);});
+        let job = Box::new(move || {
+            let result = job();
+            let _ = result_sender.send(result);
+        });
 
         self.sender
             .send(Message::Job(job))
@@ -61,7 +67,6 @@ impl Worker {
 }
 
 impl Drop for Worker {
-
     fn drop(&mut self) {
         for _ in &self.threads {
             let _ = self.sender.send(Message::Shutdown);

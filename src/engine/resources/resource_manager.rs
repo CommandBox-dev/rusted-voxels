@@ -1,29 +1,52 @@
-use crate::engine::{self, blocks::block_model::BlockModel, resources::{shader::*, texture::*}};
+use kira::sound::static_sound::StaticSoundData;
+
+use crate::engine::{
+    self,
+    blocks::block_model::BlockModel,
+    resources::{shader::*, texture::*},
+};
 
 pub struct ResourceManager {
     pub tile_atlas: TextureAtlas,
     pub font_tex: Texture,
     pub ui_tex: Texture,
-    
+    pub background_tex: Texture,
+
     pub block_models: Vec<BlockModel>,
 
     pub base_shader: Shader,
     pub ui_shader: Shader,
+
+    pub place_sound: StaticSoundData,
+    pub break_sound: StaticSoundData,
+    pub white_grass_music: StaticSoundData,
 }
 
 impl ResourceManager {
-
     pub fn new() -> Self {
-
         let mut manual = Self {
             tile_atlas: TextureAtlas::create_from_tile_pool_dir("./res/textures/blocks"),
-            font_tex: Texture::load_from_file("./res/textures/ui/font.png"),
-            ui_tex: Texture::load_from_file("./res/textures/ui/ui.png"),
+            font_tex: Texture::from_file("./res/textures/ui/font_shaded.png"),
+            ui_tex: Texture::from_file("./res/textures/ui/ui.png"),
+            background_tex: Texture::from_file("./res/textures/blocks/labyrinth_stone.png"),
 
             block_models: Vec::new(),
 
-            base_shader: Shader::load_from_file("./res/shaders/basic.vert", "./res/shaders/basic.frag"),
-            ui_shader: Shader::load_from_file("./res/shaders/basic_ui.vert", "./res/shaders/basic_ui.frag"),
+            base_shader: Shader::load_from_file(
+                "./res/shaders/basic.vert",
+                "./res/shaders/basic.frag",
+            ),
+            ui_shader: Shader::load_from_file(
+                "./res/shaders/basic_ui.vert",
+                "./res/shaders/basic_ui.frag",
+            ),
+
+            place_sound: StaticSoundData::from_file("./res/audio/place.mp3")
+                .expect("Failed to load sound from file"),
+            break_sound: StaticSoundData::from_file("./res/audio/break.mp3")
+                .expect("Failed to load sound from file"),
+            white_grass_music: StaticSoundData::from_file("./res/audio/voxel_white_grass.mp3")
+                .expect("Failed to load sound from file"),
         };
 
         let cobblestone = manual.tile_atlas.get_tile(String::from("stone"));
@@ -51,11 +74,7 @@ impl ResourceManager {
             BlockModel::new_cube(cobblestone),
             BlockModel::new_cube(wall),
             BlockModel::new_cube(sand),
-            BlockModel::new_cube_sides_top_bottom(
-                grass_side,
-                grass_top,
-                cobblestone,
-            ),
+            BlockModel::new_cube_sides_top_bottom(grass_side, grass_top, cobblestone),
             //BlockModel::new_cube(crate_tile),
             BlockModel::new_cube_sides_top_bottom(bomb_side, bomb_top, bomb_side),
             BlockModel::new_cube(floor_tiling),
@@ -96,4 +115,6 @@ pub enum BlockModelMirrors {
     MIRRORED,
 }
 
-pub fn mirror_face_x() {todo!()}
+pub fn mirror_face_x() {
+    todo!()
+}

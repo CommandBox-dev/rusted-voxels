@@ -8,8 +8,8 @@ in float dist;
 
 out vec4 FragColor;
 
-const float fog_start = 3.0 * 16.0;
-const float fog_end = 10.0 * 16.0;
+const float fog_start = 8.0 * 16.0; // 3.0 *
+const float fog_end = 20.0 * 16.0; // 10.0 *
 const vec3 fog_color = vec3(0.8, 0.8, 0.8);
 
 void main()

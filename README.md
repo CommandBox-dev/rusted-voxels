@@ -1,4 +1,4 @@
-![Alt text](res/screenshots/rusted-voxels-logo.png)
+![Alt text](res/screenshots/rusted_voxels_logo.png)
 
 A 3D Voxel engine, written in Rust by TheCommandBox.
 Visit him at https://www.youtube.com/@TheCommandBox.
@@ -8,6 +8,6 @@ How to run:
 2. Navigate to the directory that you have the project in (or open it with your IDE of choice)
 3. Run the **cargo run** command in your Terminal
 
-![Alt text](res/screenshots/desert-screenshot.png)
+![Alt text](res/screenshots/desert_screenshot.png)
 
 

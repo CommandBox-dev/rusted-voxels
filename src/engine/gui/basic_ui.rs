@@ -1,12 +1,249 @@
-use crate::engine::{gui::basic_ui::{self, UIAnchor::{AnchorTopLeft, AnchorTopMid, AnchorTopRight, AnchorMidLeft, AnchorCentered, AnchorMidRight, AnchorBottomLeft, AnchorBottomMid, AnchorBottomRight,}}, resources::texture::AtlasTile, core::window::GameWindow};
-
+use crate::engine::{
+    core::window::GameWindow, gui::basic_ui::{
+        self,
+        UIAnchor::{
+            AnchorBottomLeft, AnchorBottomMid, AnchorBottomRight, AnchorCentered, AnchorMidLeft,
+            AnchorMidRight, AnchorTopLeft, AnchorTopMid, AnchorTopRight,
+        },
+    }, resources::{resource_manager::{self, ResourceManager}, texture::AtlasTile},
+};
 
 // Components
-pub struct UITransformC {x: u32, y: u32, w: u32, h: u32, anchor: UIAnchor}
-pub struct UIContainerC {elements: Vec<Box<dyn UIElement>>,}
-pub struct UIModelC {vao: u32, vbo: u32, vertex_count: u32}
+#[derive(Clone, Debug)]
+pub struct UITransformC {
+    pub x: i32,
+    pub y: i32,
+    pub tx: i32, // the transformed x, the original offset x is kept so that
+    pub ty: i32, // the mesh can be rebuild with a different window aspect.
+    pub w: u32,
+    pub h: u32,
+    pub anchor: UIAnchor
+}
 
-#[derive(Copy, Clone)]
+pub struct UIContainerC {
+    elements: Vec<Box<dyn UIElement>>,
+}
+
+pub struct UIModelC {
+    vao: u32,
+    vbo: u32,
+    vertex_count: u32,
+}
+
+
+impl UITransformC {
+    pub fn new(x: i32, y: i32, w: u32, h: u32, anchor: UIAnchor) -> Self {
+        Self {x, y, tx: 0, ty: 0, w, h, anchor}
+    }
+
+    pub fn update_transform(&mut self, parent_transform: &UITransformC) {
+        self.align_to_parent(parent_transform);
+        self.align_self();
+    }
+
+    fn align_to_parent(&mut self, pt: &UITransformC) {
+        match &self.anchor {
+            AnchorTopLeft => {
+                self.tx = pt.tx;
+                self.ty = pt.ty;
+            }
+            AnchorTopMid => {
+                self.tx = pt.tx + pt.w as i32 / 2;
+                self.ty = pt.ty;
+            }
+            AnchorTopRight => {
+                self.tx = pt.tx + pt.w as i32;
+                self.ty = pt.ty;
+            }
+            AnchorMidLeft => {
+                self.tx = pt.tx;
+                self.ty = pt.ty + pt.h as i32 / 2;
+            }
+            AnchorCentered => {
+                self.tx = pt.tx + pt.w as i32 / 2;
+                self.ty = pt.ty + pt.h as i32 / 2;
+            }
+            AnchorMidRight => {
+                self.tx = pt.tx + pt.w as i32;
+                self.ty = pt.ty + pt.h as i32 / 2;
+            }
+            AnchorBottomLeft => {
+                self.tx = pt.tx;
+                self.ty = pt.ty + pt.h as i32;
+            }
+            AnchorBottomMid => {
+                self.tx = pt.tx + pt.w as i32 / 2;
+                self.ty = pt.ty + pt.h as i32;
+            }
+            AnchorBottomRight => {
+                self.tx = pt.tx + pt.w as i32;
+                self.ty = pt.ty + pt.h as i32;
+            }
+        }
+        // offset
+        self.tx += self.x;
+        self.ty += self.y;
+    }
+
+    fn align_self(&mut self) {
+        match &self.anchor {
+            AnchorTopLeft => {
+                return;
+            }
+            AnchorTopMid => {
+                self.tx -= self.w as i32 / 2;
+            }
+            AnchorTopRight => {
+                self.tx -= self.w as i32;
+            }
+            AnchorMidLeft => {
+                self.ty -= self.h as i32 / 2;
+            }
+            AnchorCentered => {
+                self.tx -= self.w as i32 / 2;
+                self.ty -= self.h as i32 / 2;
+            }
+            AnchorMidRight => {
+                self.tx -= self.w as i32;
+                self.ty -= self.h as i32 / 2;
+            }
+            AnchorBottomLeft => {
+                self.ty -= self.h as i32;
+            }
+            AnchorBottomMid => {
+                self.tx -= self.w as i32 / 2;
+                self.ty -= self.h as i32;
+            }
+            AnchorBottomRight => {
+                self.tx -= self.w as i32;
+                self.ty -= self.h as i32;
+            }
+        }
+    }
+}
+
+impl UIContainerC {
+    fn new() -> Self {
+        Self {
+            elements: Vec::new(),
+        }
+    }
+}
+
+impl UIModelC {
+    fn new() -> Self {
+        Self {
+            vao: 0,
+            vbo: 0,
+            vertex_count: 0,
+        }
+    }
+
+    fn draw(&self) {
+        if self.vao != 0 && self.vbo != 0 {
+            unsafe {
+                gl::BindVertexArray(self.vao);
+                gl::DrawArrays(gl::TRIANGLES, 0, self.vertex_count as i32);
+                gl::BindVertexArray(0);
+            }
+        }
+    }
+
+    fn destroy(&mut self) {
+        unsafe {
+            if self.vao != 0 {
+                gl::DeleteVertexArrays(1, &mut self.vao);
+            }
+            if self.vbo != 0 {
+                gl::DeleteBuffers(1, &mut self.vbo);
+            }
+        }
+    }
+
+    fn upload(&mut self, mesh: &[f32]) {
+        self.destroy();
+
+        unsafe {
+            gl::GenVertexArrays(1, &mut self.vao);
+            gl::GenBuffers(1, &mut self.vbo);
+
+            gl::BindVertexArray(self.vao);
+            gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
+
+            let float_size = std::mem::size_of::<f32>() as i32;
+            let stride = 4 * float_size;
+
+            gl::BufferData(
+                gl::ARRAY_BUFFER,
+                mesh.len() as isize * float_size as isize,
+                mesh.as_ptr() as *const _,
+                gl::STATIC_DRAW,
+            );
+
+            // position
+            gl::VertexAttribPointer(
+                0,
+                2,
+                gl::FLOAT,
+                gl::FALSE,
+                stride,
+                std::ptr::null()
+            );
+            gl::EnableVertexAttribArray(0);
+
+            // uv
+            gl::VertexAttribPointer(
+                1,
+                2,
+                gl::FLOAT,
+                gl::FALSE,
+                stride,
+                (2 * float_size) as *const _,
+            );
+            gl::EnableVertexAttribArray(1);
+
+            gl::BindVertexArray(0);
+        }
+    }
+}
+
+
+pub trait UIElement {
+    fn get_transform(&self) -> &UITransformC;
+
+    fn get_mut_transform(&mut self) -> &mut UITransformC;
+
+    fn cursor_update(&mut self, mx: u32, my: u32, down: bool);
+
+    fn is_hovered(&self, mx: u32, my: u32) -> bool {
+        let t = self.get_transform();
+        
+        mx as i32 >= t.tx
+        && my as i32 >= t.ty
+        && mx as i32 <= t.tx + t.w as i32
+        && my as i32 <= t.ty + t.h as i32
+    }
+
+    fn draw(&self) {}
+}
+
+pub trait UIContainer {
+    fn get_elements(&self) -> &UIContainerC;
+
+    fn get_mut_elements(&mut self) -> &mut UIContainerC;
+
+    fn update_container_items(&mut self, mx: u32, my: u32) {
+        let elements = &self.get_elements().elements;
+        for item in elements {
+            if item.is_hovered(mx, my) {
+                return;
+            }
+        }
+    }
+}
+
+
+#[derive(Copy, Clone, Debug)]
 pub enum UIAnchor {
     AnchorTopLeft,
     AnchorTopMid,
@@ -19,345 +256,141 @@ pub enum UIAnchor {
     AnchorBottomRight,
 }
 
-impl UITransformC {
-    fn new(x: u32, y: u32, w: u32, h: u32, anchor: UIAnchor) -> Self {Self {x, y, w, h, anchor}}
-    fn update_transform(&mut self, parent_transform: &UITransformC) {
-        match &self.anchor {
-            AnchorTopLeft => {
-                self.x = parent_transform.x;
-                self.y = parent_transform.y;
-            },
-            AnchorTopMid => {
-                self.x = parent_transform.x + parent_transform.w / 2;
-                self.y = parent_transform.y;
-            },
-            AnchorTopRight => {
-                self.x = parent_transform.x + parent_transform.w;
-                self.y = parent_transform.y;
-            },
-            AnchorMidLeft => {
-                self.x = parent_transform.x;
-                self.y = parent_transform.y + parent_transform.h / 2;
-            },
-            AnchorCentered => {
-                self.x = parent_transform.x + parent_transform.w / 2;
-                self.y = parent_transform.y + parent_transform.h / 2;
-            },
-            AnchorMidRight => {
-                self.x = parent_transform.x + parent_transform.w;
-                self.y = parent_transform.y + parent_transform.h / 2;
-            },
-            AnchorBottomLeft => {
-                self.x = parent_transform.x;
-                self.y = parent_transform.y + parent_transform.h;
-            },
-            AnchorBottomMid => {
-                self.x = parent_transform.x + parent_transform.w / 2;
-                self.y = parent_transform.y + parent_transform.h;
-            },
-            AnchorBottomRight => {
-                self.x = parent_transform.x + parent_transform.w;
-                self.y = parent_transform.y + parent_transform.h;
-            },
-        }
-    }
-    pub fn align_transform(&mut self) {
-        match &self.anchor {
-            AnchorTopLeft => {
-                return;
-            },
-            AnchorTopMid => {
-                self.x -= self.w / 2;
-            },
-            AnchorTopRight => {
-                self.x -= self.w;
-            },
-            AnchorMidLeft => {
-                self.y -= self.h / 2;
-            },
-            AnchorCentered => {
-                self.x -= self.w / 2;
-                self.y -= self.h / 2;
-            },
-            AnchorMidRight => {
-                self.x -= self.w;
-                self.y -= self.h / 2;
-            },
-            AnchorBottomLeft => {
-                self.y -= self.h;
-            },
-            AnchorBottomMid => {
-                self.x -= self.w / 2;
-                self.y -= self.h;
-            },
-            AnchorBottomRight => {
-                self.x -= self.w;
-                self.y -= self.h;
-            },
-        }
-    }
-}
-
-impl UIContainerC {
-    fn new() -> Self {Self {elements: Vec::new()}}
-    //fn add_element<E: UIElement + 'static>(&mut self, element: E) -> &E {
-    //    self.elements.push(Box::new(element));
-        //self.elements.last().unwrap().as_ref()
-    //}
-}
-
-impl UIModelC {
-    fn new() -> Self {
-        Self {vao: 0, vbo: 0, vertex_count: 0}
-    }
-    fn draw(&self) {
-        if self.vao != 0 && self.vbo != 0 {
-            unsafe {
-                gl::BindVertexArray(self.vao);
-                gl::DrawArrays(gl::TRIANGLES, 0, 6);
-                gl::BindVertexArray(0);
-            }
-        }
-    }
-}
-
 // ---------- Nodes ----------
 
-// Containers
-pub struct UIFrame {transform: UITransformC, container: UIContainerC}
-pub struct UIGrid {transform: UITransformC, container: UIContainerC}
-pub struct UIVStack {transform: UITransformC, container: UIContainerC}
-pub struct UIHStack {transform: UITransformC, container: UIContainerC}
+// Container
+pub struct UIFrame {
+    transform: UITransformC,
+    container: UIContainerC,
+}
+
+pub struct UIGrid {
+    transform: UITransformC,
+    container: UIContainerC,
+}
+
+pub struct UIVStack {
+    transform: UITransformC,
+    container: UIContainerC,
+}
+
+pub struct UIHStack {
+    transform: UITransformC,
+    container: UIContainerC,
+}
 
 // Widgets
-pub struct UIButton {transform: UITransformC, model: UIModelC, text: UILabel, pub down: bool, pub hovered: bool}
-// symbol button
-pub struct UIToggle {transform: UITransformC}
-pub struct UICheckBox {transform: UITransformC, model: UIModelC, pub state: bool}
-pub struct UILabel {transform: UITransformC, model: UIModelC}
-pub struct UIItemDisplay {transform: UITransformC}
-pub struct UIEntityDisplay {transform: UITransformC}
-pub struct UITextPanel {transform: UITransformC}
-pub struct UIProgressBar {transform: UITransformC}
-pub struct UIOptionButton {transform: UITransformC}
-pub struct UISlider {transform: UITransformC}
-pub struct UITextBox {transform: UITransformC}
-pub struct UITexturedRect {transform: UITransformC}
+// implemented
+pub struct UIButton {
+    transform: UITransformC,
+    model: UIModelC,
+    text: UILabel,
+    pub hovered: bool,
+    pub pressed: bool,
+}
+pub struct UIIconButton {
+    transform: UITransformC,
+    model: UIModelC,
+    pub hovered: bool,
+    pub pressed: bool,
+}
+// implemented
+pub struct UIToggle {
+    transform: UITransformC,
+}
+// implemented
+pub struct UICheckBox {
+    transform: UITransformC,
+    model: UIModelC,
+    pub hovered: bool,
+    pub pressed: bool,
+    pub state: bool,
+}
+// implemented
+pub struct UILabel {
+    transform: UITransformC,
+    model: UIModelC,
+}
+pub struct UIItemDisplay {
+    transform: UITransformC,
+}
+pub struct UIEntityDisplay {
+    transform: UITransformC,
+}
+pub struct UITextPanel {
+    transform: UITransformC,
+}
+pub struct UIProgressBar {
+    transform: UITransformC,
+}
+pub struct UIOptionButton {
+    transform: UITransformC,
+}
+pub struct UISlider {
+    transform: UITransformC,
+}
+pub struct UITextBox {
+    transform: UITransformC,
+}
+// implemented
+pub struct UITexturedRect {
+    transform: UITransformC,
+    model: UIModelC,
+}
 
 // Layout
-struct UIPanel {transform: UITransformC}
-pub struct UISeperator {transform: UITransformC}
+struct UIPanel {
+    transform: UITransformC,
+}
+pub struct UISeperator {
+    transform: UITransformC,
+}
 
 // Inventory
-pub struct UIContainerSlot {transform: UITransformC} // a single inventory slot with a textured background
-pub struct UIContainerGrid {transform: UITransformC} // a grid of basic inventory slots
+pub struct UIContainerSlot {
+    transform: UITransformC,
+} // a single inventory slot with a textured background
+pub struct UIContainerGrid {
+    transform: UITransformC,
+} // a grid of basic inventory slots
 
 // ---------------------------
 
 
-pub trait UIElement {
-    fn get_transform(&self) -> &UITransformC;
-    fn get_mut_transform(&mut self) -> &mut UITransformC;
-    fn cursor_update(&mut self, mx: u32, my: u32, down: bool);
-
-    fn hovered(&self, mx: u32, my: u32) -> bool {
-        self.get_transform();
-        false
-    }
-}
-
-pub trait UIContainer {
-    fn get_elements(&self) -> &UIContainerC;
-    fn get_mut_elements(&mut self) -> &mut UIContainerC;
-
-    fn update_container_items(&mut self, mx: u32, my: u32) {
-        let elements = &self.get_elements().elements;
-        for item in elements {
-            if item.hovered(mx, my) {return;}
-        }
-    }
-
-    //fn add_element<E: UIElement + 'static>(&mut self, mut element: E) -> &E where Self: UIElement {
-    //    element.get_mut_transform().update_transform(self.get_transform());
-        //self.get_mut_elements().add_element(element)
-    //}
-}
-
-impl UIFrame {
-    pub fn new(w: u32, h: u32, anchor: UIAnchor) -> Self {
-        Self {
-            transform: UITransformC::new(0, 0, w, h, anchor),
-            container: UIContainerC::new(),
-        }
-    }
-}
-
-/*impl UIElement for UIFrame {
-    fn get_transform(&self) -> &UITransformC {&self.transform}
-    fn get_mut_transform(&mut self) -> &mut UITransformC {&mut self.transform}
-}
-impl UIElement for UIGrid {
-    fn get_transform(&self) -> &UITransformC {&self.transform}
-    fn get_mut_transform(&mut self) -> &mut UITransformC {&mut self.transform}
-}
-impl UIElement for UIVStack {
-    fn get_transform(&self) -> &UITransformC {&self.transform}
-    fn get_mut_transform(&mut self) -> &mut UITransformC {&mut self.transform}
-}
-impl UIElement for UIHStack {
-    fn get_transform(&self) -> &UITransformC {&self.transform}
-    fn get_mut_transform(&mut self) -> &mut UITransformC {&mut self.transform}
-}
-impl UIElement for UIToggle {
-    fn get_transform(&self) -> &UITransformC {&self.transform}
-    fn get_mut_transform(&mut self) -> &mut UITransformC {&mut self.transform}
-}
-impl UIElement for UICheckBox {
-    fn get_transform(&self) -> &UITransformC {&self.transform}
-    fn get_mut_transform(&mut self) -> &mut UITransformC {&mut self.transform}
-}
-impl UIElement for UIItemDisplay {
-    fn get_transform(&self) -> &UITransformC {&self.transform}
-    fn get_mut_transform(&mut self) -> &mut UITransformC {&mut self.transform}
-}
-impl UIElement for UIEntityDisplay {
-    fn get_transform(&self) -> &UITransformC {&self.transform}
-    fn get_mut_transform(&mut self) -> &mut UITransformC {&mut self.transform}
-}
-impl UIElement for UITextPanel {
-    fn get_transform(&self) -> &UITransformC {&self.transform}
-    fn get_mut_transform(&mut self) -> &mut UITransformC {&mut self.transform}
-}
-impl UIElement for UIProgressBar {
-    fn get_transform(&self) -> &UITransformC {&self.transform}
-    fn get_mut_transform(&mut self) -> &mut UITransformC {&mut self.transform}
-}
-impl UIElement for UIOptionButton {
-    fn get_transform(&self) -> &UITransformC {&self.transform}
-    fn get_mut_transform(&mut self) -> &mut UITransformC {&mut self.transform}
-}
-impl UIElement for UISlider {
-    fn get_transform(&self) -> &UITransformC {&self.transform}
-    fn get_mut_transform(&mut self) -> &mut UITransformC {&mut self.transform}
-}
-impl UIElement for UITextBox {
-    fn get_transform(&self) -> &UITransformC {&self.transform}
-    fn get_mut_transform(&mut self) -> &mut UITransformC {&mut self.transform}
-}
-impl UIElement for UITexturedRect {
-    fn get_transform(&self) -> &UITransformC {&self.transform}
-    fn get_mut_transform(&mut self) -> &mut UITransformC {&mut self.transform}
-}
-
-
-impl UIContainer for UIFrame {
-    fn get_elements(&self) -> &UIContainerC {&self.container}
-    fn get_mut_elements(&mut self) -> &mut UIContainerC {&mut self.container}
-}
-impl UIContainer for UIVStack {
-    fn get_elements(&self) -> &UIContainerC {&self.container}
-    fn get_mut_elements(&mut self) -> &mut UIContainerC {&mut self.container}
-}
-impl UIContainer for UIHStack {
-    fn get_elements(&self) -> &UIContainerC {&self.container}
-    fn get_mut_elements(&mut self) -> &mut UIContainerC {&mut self.container}
-}
-impl UIContainer for UIGrid {
-    fn get_elements(&self) -> &UIContainerC {&self.container}
-    fn get_mut_elements(&mut self) -> &mut UIContainerC {&mut self.container}
-}*/
-
-
-fn upload_rect(window: &GameWindow, tex: &AtlasTile) -> (u32, u32) {
-    let size: i32 = 40;
-    let x: f32 = (window.fb_width / 2 - size / 2) as f32;
-    let y: f32 = (window.fb_height / 2 - size / 2) as f32;
-    let w: f32 = size as f32;
-    let h: f32 = size as f32;
-
-    let quad_mesh: [f32; 24] = [
-        x + w, y + h, tex.xm, tex.ym,
-        x + w, y, tex.xm, tex.y,
-        x, y, tex.x,  tex.y,
-
-        x, y, tex.xm, tex.ym,
-        x, y + h, tex.x,  tex.ym,
-        x + w, y + h, tex.x,  tex.y,
-    ];
-
-    let vertex_count = (quad_mesh.len() / 4) as u32;
-
-    let mut vao = 0;
-    let mut vbo = 0;
-
-    unsafe {
-
-        gl::GenVertexArrays(1, &mut vao);
-        gl::GenBuffers(1, &mut vbo);
-        
-        gl::BindVertexArray(vao);
-        gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
-
-        let float_size = std::mem::size_of::<f32>() as i32;
-        let stride = 4 * float_size;
-
-        gl::BufferData(gl::ARRAY_BUFFER, (quad_mesh.len() * float_size as usize) as isize, quad_mesh.as_ptr() as *const _, gl::STATIC_DRAW);
-
-        // position
-        gl::VertexAttribPointer(0, 2, gl::FLOAT, gl::FALSE, stride, std::ptr::null());
-        gl::EnableVertexAttribArray(0);
-
-        // uv
-        gl::VertexAttribPointer(
-            1,
-            2,
-            gl::FLOAT,
-            gl::FALSE,
-            stride,
-            (2 * float_size) as *const _
-        );
-        gl::EnableVertexAttribArray(1);
-        
-        gl::BindVertexArray(0);
-    }
-    (vao, vbo)
-}
-
-fn destroy_rect(model: &mut UIModelC) {
-    unsafe {
-        if model.vao != 0 {gl::DeleteVertexArrays(1, &mut model.vao);}
-        if model.vbo != 0 {gl::DeleteBuffers(1, &mut model.vbo);}
-    }
-    model.vao = 0;
-    model.vbo = 0;
-}
-
-
-
-
 impl UIElement for UILabel {
-    fn get_transform(&self) -> &UITransformC {&self.transform}
-    fn get_mut_transform(&mut self) -> &mut UITransformC {&mut self.transform}
+    fn get_transform(&self) -> &UITransformC {
+        &self.transform
+    }
+
+    fn get_mut_transform(&mut self) -> &mut UITransformC {
+        &mut self.transform
+    }
+
     fn cursor_update(&mut self, mx: u32, my: u32, down: bool) {}
+
+    fn draw(&self) {
+        unsafe {
+            gl::BindVertexArray(self.model.vao);
+            gl::DrawArrays(gl::TRIANGLES, 0, self.model.vertex_count as i32);
+            gl::BindVertexArray(0);
+        }
+    }
 }
 
 impl UILabel {
-    pub fn new(x: u32, y: u32, text: &str, anchor: UIAnchor) -> Self {
+    pub fn new(x: i32, y: i32, text: &str, anchor: UIAnchor, parent_transform: &UITransformC) -> Self {
         let mut label = Self {
-            transform: UITransformC::new(x, y, 0, 0, anchor), // can't align transform
+            transform: UITransformC::new(x, y, UILabel::get_label_width(text), 25, anchor),
             model: UIModelC::new(),
         };
-        label.build_text_mesh(text);
+        label.transform.update_transform(parent_transform);
+        label.build_mesh(text);
         label
     }
 
-    pub fn build_text_mesh(&mut self, text: &str) { // build model
-        unsafe {
-            if self.model.vao != 0 {gl::DeleteVertexArrays(1, &mut self.model.vao);}
-            if self.model.vbo != 0 {gl::DeleteBuffers(1, &mut self.model.vbo);}
-        }
+    pub fn build_mesh(&mut self, text: &str) {
 
-        let mut verts: Vec<f32> = Vec::new();
+        let mut mesh: Vec<f32> = Vec::new();
 
         let tex_width = 128;
         let char_tex_aspect_x = 7.0 / tex_width as f32;
@@ -367,13 +400,12 @@ impl UILabel {
 
         let h: f32 = 25.0;
         let w: f32 = 25.0;
-        
+
         let mut total_width: f32 = 0.0;
         for c in text.chars() {
             if c.is_ascii() && c >= '!' {
-                
-                let x: f32 = self.transform.x as f32 + total_width;
-                let y: f32 = self.transform.y as f32; 
+                let x: f32 = self.transform.tx as f32 + total_width;
+                let y: f32 = self.transform.ty as f32;
 
                 // the font atlas starts at ascii char '!'
                 let l = c as u8 - b'!';
@@ -388,14 +420,14 @@ impl UILabel {
                 let rect: [f32; 24] = [
                     x + w, y + h, tex_mx, tex_my,
                     x + w, y, tex_mx, tex_y,
-                    x, y, tex_x,  tex_y,
-
                     x, y, tex_x, tex_y,
-                    x, y + h, tex_x,  tex_my,
-                    x + w, y + h, tex_mx,  tex_my,
+                    x, y, tex_x, tex_y,
+                    x, y + h, tex_x, tex_my,
+                    x + w, y + h, tex_mx, tex_my,
                 ];
+
                 for f in rect {
-                    verts.push(f);
+                    mesh.push(f);
                 }
             }
             total_width += UILabel::get_char_width(c) * w;
@@ -403,39 +435,19 @@ impl UILabel {
 
         self.transform.w = total_width as u32;
         self.transform.h = h as u32;
-
-        self.model.vertex_count = (verts.len() / 4) as u32;
         
-        unsafe {
+        self.model.vertex_count = (mesh.len() / 4) as u32;
 
-            gl::GenVertexArrays(1, &mut self.model.vao);
-            gl::GenBuffers(1, &mut self.model.vbo);
-            
-            gl::BindVertexArray(self.model.vao);
-            gl::BindBuffer(gl::ARRAY_BUFFER, self.model.vbo);
+        self.model.upload(&mesh);
+    }
 
-            let float_size = std::mem::size_of::<f32>() as i32;
-            let stride = 4 * float_size;
-
-            gl::BufferData(gl::ARRAY_BUFFER, (verts.len() * float_size as usize) as isize, verts.as_ptr() as *const _, gl::STATIC_DRAW);
-
-            // position
-            gl::VertexAttribPointer(0, 2, gl::FLOAT, gl::FALSE, stride, std::ptr::null());
-            gl::EnableVertexAttribArray(0);
-
-            // uv
-            gl::VertexAttribPointer(
-                1,
-                2,
-                gl::FLOAT,
-                gl::FALSE,
-                stride,
-                (2 * float_size) as *const _
-            );
-            gl::EnableVertexAttribArray(1);
-            
-            gl::BindVertexArray(0);
+    pub fn get_label_width(text: &str) -> u32 {
+        let mut total_width = 0;
+        for c in text.chars() {
+            total_width += (UILabel::get_char_width(c) * 25.0) as u32;
         }
+        println!("{total_width}");
+        total_width
     }
 
     fn get_char_width(c: char) -> f32 {
@@ -452,7 +464,7 @@ impl UILabel {
             ',' => w = ps * 2.0,
             '-' => w = ps * 3.0,
             '.' => w = ps * 2.0,
-            
+
             'l' => w = ps * 2.0,
             'i' => w = ps * 2.0,
             ':' => w = ps * 2.0,
@@ -460,8 +472,33 @@ impl UILabel {
         }
         w
     }
+}
 
-    pub fn render(&self) {
+
+
+impl UIElement for UIButton {
+    fn get_transform(&self) -> &UITransformC {
+        &self.transform
+    }
+
+    fn get_mut_transform(&mut self) -> &mut UITransformC {
+        &mut self.transform
+    }
+
+    fn cursor_update(&mut self, mx: u32, my: u32, down: bool) {
+        if down && self.is_hovered(mx, my) 
+        {
+            self.hovered = true;
+            self.pressed = true;
+            //self.create_model();
+        } else {
+            self.hovered = false;
+            self.pressed = false;
+            //self.create_model();
+        }
+    }
+
+    fn draw(&self) {
         unsafe {
             gl::BindVertexArray(self.model.vao);
             gl::DrawArrays(gl::TRIANGLES, 0, self.model.vertex_count as i32);
@@ -470,40 +507,28 @@ impl UILabel {
     }
 }
 
-
-impl UIElement for UIButton {
-    fn get_transform(&self) -> &UITransformC {&self.transform}
-    fn get_mut_transform(&mut self) -> &mut UITransformC {&mut self.transform}
-    fn cursor_update(&mut self, mx: u32, my: u32, down: bool) {
-        if down &&
-        mx >= self.transform.x &&
-        my >= self.transform.y &&
-        mx <= self.transform.x + self.transform.w &&
-        my <= self.transform.y + self.transform.h
-        {self.down = true; self.create_model();} else
-        {self.down = false; self.create_model();}
-    }
-}
-
 impl UIButton {
-    pub fn new(x: u32, y: u32, w: u32, h: u32, text: &str, anchor: UIAnchor) -> Self {
+    pub fn new(x: i32, y: i32, w: u32, h: u32, text: &str, anchor: UIAnchor, parent_transform: &UITransformC) -> Self {
+
+        let mut transform = UITransformC::new(x, y, w, h, anchor);
+        transform.update_transform(parent_transform);
+        let mut label = UILabel::new(0, 0, text, AnchorCentered, &transform);
+
         let mut button = Self {
-            transform: UITransformC::new(x, y, w, h, anchor),
+            transform,
             model: UIModelC::new(),
-            text: UILabel::new(x, y, text, anchor),
-            down: false,
+            text: label,
             hovered: false,
+            pressed: false,
         };
-        button.transform.align_transform();
-        button.text.transform.align_transform();
-        button.text.build_text_mesh(text);
         button.create_model();
         button
     }
 
     fn create_model(&mut self) {
-        let x = self.transform.x as f32;
-        let y = self.transform.y as f32;
+
+        let x = self.transform.tx as f32;
+        let y = self.transform.ty as f32;
         let w = self.transform.w as f32;
         let h = self.transform.h as f32;
 
@@ -514,7 +539,7 @@ impl UIButton {
         let tex_mx;
         let tex_my;
 
-        if self.down {
+        if self.pressed {
             tex_x = 2 as f32 / tex_pixel_size;
             tex_y = 16 as f32 / tex_pixel_size;
             tex_mx = 44 as f32 / tex_pixel_size;
@@ -529,94 +554,67 @@ impl UIButton {
         let rect: [f32; 24] = [
             x + w, y + h, tex_mx, tex_my,
             x + w, y, tex_mx, tex_y,
-            x, y, tex_x,  tex_y,
-
             x, y, tex_x, tex_y,
-            x, y + h, tex_x,  tex_my,
-            x + w, y + h, tex_mx,  tex_my,
+            x, y, tex_x, tex_y,
+            x, y + h, tex_x, tex_my,
+            x + w, y + h, tex_mx, tex_my,
         ];
 
         self.model.vertex_count = (rect.len() / 4) as u32;
 
-        unsafe {
-            if self.model.vao != 0 {gl::DeleteVertexArrays(1, &mut self.model.vao);}
-            if self.model.vbo != 0 {gl::DeleteBuffers(1, &mut self.model.vbo);}
-        }
-        
-        unsafe {
+        self.model.upload(&rect);
+    }
 
-            gl::GenVertexArrays(1, &mut self.model.vao);
-            gl::GenBuffers(1, &mut self.model.vbo);
-            
-            gl::BindVertexArray(self.model.vao);
-            gl::BindBuffer(gl::ARRAY_BUFFER, self.model.vbo);
+    pub fn draw_text(&self) {
+        self.text.draw();
+    }
+}
 
-            let float_size = std::mem::size_of::<f32>() as i32;
-            let stride = 4 * float_size;
 
-            gl::BufferData(gl::ARRAY_BUFFER, (rect.len() * float_size as usize) as isize, rect.as_ptr() as *const _, gl::STATIC_DRAW);
 
-            // position
-            gl::VertexAttribPointer(0, 2, gl::FLOAT, gl::FALSE, stride, std::ptr::null());
-            gl::EnableVertexAttribArray(0);
+impl UIElement for UICheckBox {
+    fn get_transform(&self) -> &UITransformC {
+        &self.transform
+    }
 
-            // uv
-            gl::VertexAttribPointer(
-                1,
-                2,
-                gl::FLOAT,
-                gl::FALSE,
-                stride,
-                (2 * float_size) as *const _
-            );
-            gl::EnableVertexAttribArray(1);
-            
-            gl::BindVertexArray(0);
+    fn get_mut_transform(&mut self) -> &mut UITransformC {
+        &mut self.transform
+    }
+
+    fn cursor_update(&mut self, mx: u32, my: u32, down: bool) {
+        if down && self.is_hovered(mx, my)
+        {
+            self.state = !self.state;
+            self.create_model();
         }
     }
 
-    pub fn render(&self) {
+    fn draw(&self) {
         unsafe {
             gl::BindVertexArray(self.model.vao);
             gl::DrawArrays(gl::TRIANGLES, 0, self.model.vertex_count as i32);
             gl::BindVertexArray(0);
         }
     }
-
-    pub fn render_text(&self) {
-        self.text.render();
-    }
-}
-
-
-impl UIElement for UICheckBox {
-    fn get_transform(&self) -> &UITransformC {&self.transform}
-    fn get_mut_transform(&mut self) -> &mut UITransformC {&mut self.transform}
-    fn cursor_update(&mut self, mx: u32, my: u32, down: bool) {
-        if down &&
-        mx >= self.transform.x &&
-        my >= self.transform.y &&
-        mx <= self.transform.x + self.transform.w &&
-        my <= self.transform.y + self.transform.h
-        {self.state = !self.state; self.create_model();}
-    }
 }
 
 impl UICheckBox {
-    pub fn new(x: u32, y: u32, s: u32, state: bool, anchor: UIAnchor) -> Self {
+    pub fn new(x: i32, y: i32, s: u32, state: bool, anchor: UIAnchor, parent_transform: &UITransformC) -> Self {
         let mut button = Self {
             transform: UITransformC::new(x, y, s, s, anchor),
             model: UIModelC::new(),
+            hovered: false,
+            pressed: false,
             state,
         };
-        button.transform.align_transform();
+        button.transform.update_transform(parent_transform);
         button.create_model();
         button
     }
 
     fn create_model(&mut self) {
-        let x = self.transform.x as f32;
-        let y = self.transform.y as f32;
+        let x = self.transform.tx as f32;
+        let y = self.transform.ty as f32;
         let w = self.transform.w as f32;
         let h = self.transform.h as f32;
 
@@ -642,57 +640,75 @@ impl UICheckBox {
         let rect: [f32; 24] = [
             x + w, y + h, tex_mx, tex_my,
             x + w, y, tex_mx, tex_y,
-            x, y, tex_x,  tex_y,
-
             x, y, tex_x, tex_y,
-            x, y + h, tex_x,  tex_my,
-            x + w, y + h, tex_mx,  tex_my,
+            x, y, tex_x, tex_y,
+            x, y + h, tex_x, tex_my,
+            x + w, y + h, tex_mx, tex_my,
         ];
 
         self.model.vertex_count = (rect.len() / 4) as u32;
 
-        unsafe {
-            if self.model.vao != 0 {gl::DeleteVertexArrays(1, &mut self.model.vao);}
-            if self.model.vbo != 0 {gl::DeleteBuffers(1, &mut self.model.vbo);}
-        }
-        
-        unsafe {
+        self.model.upload(&rect);
+    }
+}
 
-            gl::GenVertexArrays(1, &mut self.model.vao);
-            gl::GenBuffers(1, &mut self.model.vbo);
-            
-            gl::BindVertexArray(self.model.vao);
-            gl::BindBuffer(gl::ARRAY_BUFFER, self.model.vbo);
 
-            let float_size = std::mem::size_of::<f32>() as i32;
-            let stride = 4 * float_size;
 
-            gl::BufferData(gl::ARRAY_BUFFER, (rect.len() * float_size as usize) as isize, rect.as_ptr() as *const _, gl::STATIC_DRAW);
-
-            // position
-            gl::VertexAttribPointer(0, 2, gl::FLOAT, gl::FALSE, stride, std::ptr::null());
-            gl::EnableVertexAttribArray(0);
-
-            // uv
-            gl::VertexAttribPointer(
-                1,
-                2,
-                gl::FLOAT,
-                gl::FALSE,
-                stride,
-                (2 * float_size) as *const _
-            );
-            gl::EnableVertexAttribArray(1);
-            
-            gl::BindVertexArray(0);
-        }
+impl UIElement for UITexturedRect {
+    fn get_transform(&self) -> &UITransformC {
+        &self.transform
     }
 
-    pub fn render(&self) {
+    fn get_mut_transform(&mut self) -> &mut UITransformC {
+        &mut self.transform
+    }
+
+    fn cursor_update(&mut self, mx: u32, my: u32, down: bool) {}
+
+    fn draw(&self) {
         unsafe {
             gl::BindVertexArray(self.model.vao);
             gl::DrawArrays(gl::TRIANGLES, 0, self.model.vertex_count as i32);
             gl::BindVertexArray(0);
         }
+    }
+}
+
+impl UITexturedRect {
+    pub fn new(x: i32, y: i32, w: u32, h: u32, anchor: UIAnchor, parent_transform: &UITransformC) -> Self {
+        let mut tex_rect = Self {
+            transform: UITransformC::new(x, y, w, h, anchor),
+            model: UIModelC::new(),
+        };
+        tex_rect.transform.update_transform(&parent_transform);
+        tex_rect.rebuild_model();
+        tex_rect
+    }
+
+    pub fn rebuild_model(&mut self) {
+        let x = self.transform.tx as f32;
+        let y = self.transform.ty as f32;
+        let w = self.transform.w as f32;
+        let h = self.transform.h as f32;
+
+        let tex_pixel_size = 256 as f32;
+
+        let tex_x = 0.0;
+        let tex_y = 0.0;
+        let tex_mx = 10.0;
+        let tex_my = 10.0;
+
+        let rect: [f32; 24] = [
+            x + w, y + h, tex_mx, tex_my,
+            x + w, y, tex_mx, tex_y,
+            x, y, tex_x, tex_y,
+            x, y, tex_x, tex_y,
+            x, y + h, tex_x, tex_my,
+            x + w, y + h, tex_mx, tex_my,
+        ];
+
+        self.model.vertex_count = (rect.len() / 4) as u32;
+
+        self.model.upload(&rect);
     }
 }

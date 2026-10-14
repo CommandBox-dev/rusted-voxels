@@ -21,9 +21,12 @@ pub struct AtlasTile {
 }
 
 impl Texture {
-
-    pub fn load_from_file(path: &str) -> Self {
-        Texture::upload(&image::open(path).expect("Failed to load texture").into_rgba8()) // flipv()
+    pub fn from_file(path: &str) -> Self {
+        Texture::upload(
+            &image::open(path)
+                .expect("Failed to load texture")
+                .into_rgba8(),
+        ) // flipv()
     }
 
     pub fn bind(&self, unit: u32) {
@@ -38,7 +41,6 @@ impl Texture {
     }
 
     fn upload(img: &ImageBuffer<image::Rgba<u8>, Vec<u8>>) -> Self {
-
         let (width, height) = img.dimensions();
 
         let mut handle = 0;
@@ -48,29 +50,17 @@ impl Texture {
             gl::BindTexture(gl::TEXTURE_2D, handle);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAX_LEVEL, 4);
 
-            gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_WRAP_S,
-                gl::CLAMP_TO_EDGE as i32
-            );
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
 
-            gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_WRAP_T,
-                gl::CLAMP_TO_EDGE as i32
-            );
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
 
             gl::TexParameteri(
                 gl::TEXTURE_2D,
                 gl::TEXTURE_MIN_FILTER,
-                gl::NEAREST_MIPMAP_LINEAR as i32
+                gl::NEAREST_MIPMAP_LINEAR as i32,
             );
 
-            gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_MAG_FILTER,
-                gl::NEAREST as i32
-            );
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
 
             gl::TexImage2D(
                 gl::TEXTURE_2D,
@@ -88,16 +78,15 @@ impl Texture {
 
             gl::BindTexture(gl::TEXTURE_2D, 0);
         }
-        Texture {handle}
+        Texture { handle }
     }
 }
 
 impl TextureAtlas {
-
     pub fn bind(&self, unit: u32) {
         self.texture.bind(unit);
     }
-    
+
     pub fn get_tile(&self, tile: String) -> &AtlasTile {
         // TODO: The first tile in the atlas should be the "missing texture" tile,
         // since if the requested tile isn't found this method will return tile 0
@@ -111,7 +100,6 @@ impl TextureAtlas {
     }
 
     pub fn create_from_tile_pool_dir(image_pool_path: &str) -> Self {
-
         let tile_size = 16;
 
         let mut images = Vec::new();
@@ -125,10 +113,7 @@ impl TextureAtlas {
                 continue;
             }
 
-            let extension = path
-                .extension()
-                .and_then(|e| e.to_str())
-                .unwrap_or("");
+            let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
             if extension != "png" {
                 continue;
@@ -159,7 +144,9 @@ impl TextureAtlas {
             let tile_x = (index as u32 % atlas_tiles_width) * tile_size;
             let tile_y = (index as u32 / atlas_tiles_width) * tile_size;
 
-            atlas.copy_from(&img, tile_x, tile_y).expect("Failed to copy tile into atlas");
+            atlas
+                .copy_from(&img, tile_x, tile_y)
+                .expect("Failed to copy tile into atlas");
 
             let x = (tile_x as f32 / 16.0) * tile_aspect;
             let y = (tile_y as f32 / 16.0) * tile_aspect;
@@ -171,8 +158,12 @@ impl TextureAtlas {
                 xm: x + tile_aspect,
                 ym: y + tile_aspect,
             });
-        };
+        }
 
-        TextureAtlas{texture: Texture::upload(&atlas), tiles, tiles_per_row: atlas_tiles_width}
+        TextureAtlas {
+            texture: Texture::upload(&atlas),
+            tiles,
+            tiles_per_row: atlas_tiles_width,
+        }
     }
 }

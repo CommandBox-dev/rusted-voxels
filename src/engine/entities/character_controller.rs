@@ -3,39 +3,47 @@ use std::ops::Add;
 use glam::{Vec2, Vec3};
 use glfw::*;
 
-use crate::engine::rendering::camera::Camera;
+use crate::engine::audio::audio_server::AudioServer;
 use crate::engine::core::input::Input;
-use crate::engine::physics::aabb::{AABB, move_and_collide};
 use crate::engine::core::window::GameWindow;
-use crate::engine::world::world::World;
+use crate::engine::gui::menu_manager::{Menu, MenuManager};
+use crate::engine::physics::aabb::{AABB, move_and_collide};
 use crate::engine::physics::raycast;
+use crate::engine::rendering::camera::Camera;
+use crate::engine::resources::resource_manager::{self, ResourceManager};
+use crate::engine::world::world::World;
 
-    
 // this is just temporarily, i will fix it later
 
 pub struct CharacterState {
-    pub escape: bool,
-
     pub selected_block: u32,
     pub is_on_floor: bool,
     pub velocity: Vec3,
 }
 
 impl CharacterState {
-
     pub fn new() -> Self {
         Self {
-            escape: false,
             selected_block: 16, // 5
             is_on_floor: false,
             velocity: Vec3::ZERO,
         }
     }
 
-    pub fn update(&mut self, camera: &mut Camera, input: &Input, mut world: &mut World, window: &mut GameWindow) {
-
+    pub fn update(
+        &mut self,
+        camera: &mut Camera,
+        input: &Input,
+        mut world: &mut World,
+        window: &mut GameWindow,
+        menu_manager: &MenuManager,
+        audio_manager: &mut AudioServer,
+        resource_manager: &ResourceManager,
+    ) {
         // breaking
-        if !self.escape && input.is_mouse_button_pressed(MouseButton::Left as i32) {
+        if menu_manager.selected_menu == Menu::Closed
+            && input.is_mouse_button_pressed(MouseButton::Left as i32)
+        {
             let result = raycast::cast_ray(camera.position, camera.front, 15.0, &mut world);
             if result.hit {
                 world.set_block(
@@ -44,11 +52,14 @@ impl CharacterState {
                     result.hit_position.z,
                     0,
                 );
+                audio_manager.play_sound_flat(resource_manager.break_sound.clone());
             }
         }
 
         // placing
-        if !self.escape && input.is_mouse_button_pressed(MouseButton::Right as i32) {
+        if menu_manager.selected_menu == Menu::Closed
+            && input.is_mouse_button_pressed(MouseButton::Right as i32)
+        {
             let result = raycast::cast_ray(camera.position, camera.front, 15.0, &mut world);
             if result.hit {
                 world.set_block(
@@ -57,18 +68,22 @@ impl CharacterState {
                     result.hit_position.z + result.hit_normal.z,
                     self.selected_block,
                 );
+                audio_manager.play_sound_flat(resource_manager.place_sound.clone());
             }
         }
 
         // block selecting
-        if !self.escape && input.is_mouse_button_pressed(MouseButton::Middle as i32) {
+        if menu_manager.selected_menu == Menu::Closed
+            && input.is_mouse_button_pressed(MouseButton::Middle as i32)
+        {
             let result = raycast::cast_ray(camera.position, camera.front, 15.0, &mut world);
             if result.hit {
                 self.selected_block = result.hit_block;
             }
         }
 
-        if !self.escape && input.is_pressed(Key::P as i32) {
+        // structure placement
+        if menu_manager.selected_menu == Menu::Closed && input.is_pressed(Key::P as i32) {
             let result = raycast::cast_ray(camera.position, camera.front, 15.0, &mut world);
             if result.hit {
                 let hit = result.hit_position.clone().add(result.hit_normal);
@@ -76,19 +91,9 @@ impl CharacterState {
             }
         }
 
-        // escape
-        if input.is_pressed(Key::Escape as i32) {
-            self.escape = !self.escape;
-            if self.escape {
-                window.set_cursor_mode(glfw::CursorMode::Normal);
-            } else {
-                window.set_cursor_mode(glfw::CursorMode::Disabled);
-            }
-        }
-
         // head rotation
         let (move_x, move_y) = input.get_last_mouse_movement();
-        if !self.escape {
+        if menu_manager.selected_menu == Menu::Closed {
             camera.yaw += -move_x;
             camera.pitch += -move_y;
 
@@ -114,19 +119,24 @@ impl CharacterState {
         if input.is_down(Key::A as i32) {
             left = 1;
         }
-        if !self.escape && input.is_down(Key::Space as i32) {
+
+        if menu_manager.selected_menu == Menu::Closed && input.is_down(Key::Space as i32) {
             self.velocity.y = 0.1;
         } else {
             self.velocity.y += (-9.8 * 0.045 * window.delta);
         }
-        
-        let movement_input = if self.escape {Vec2::ZERO} else {Vec2::new((front - back) as f32, -(right - left) as f32)};
+
+        let movement_input = if menu_manager.selected_menu == Menu::Closed {
+            Vec2::new((front - back) as f32, -(right - left) as f32)
+        } else {
+            Vec2::ZERO
+        };
         let mut speed = 5.0;
-        
+
         if input.is_down(Key::LeftShift as i32) {
             speed *= 3.0;
         }
-        
+
         let vel_y = self.velocity.y;
         self.velocity.y *= 0.90;
         self.velocity = camera.forward * movement_input.x * window.delta * speed;

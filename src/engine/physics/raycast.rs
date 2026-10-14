@@ -1,6 +1,9 @@
-use glam::{Vec3, IVec3};
+use glam::{IVec3, Vec3};
 
-use crate::engine::{world::chunk::{self, Chunk}, world::world::World};
+use crate::engine::{
+    world::chunk::{self, Chunk},
+    world::world::World,
+};
 
 pub fn cast_ray(origin: Vec3, dir: Vec3, length: f32, world: &mut World) -> RayResult {
     // direction needs to be normalized
@@ -14,35 +17,63 @@ pub fn cast_ray(origin: Vec3, dir: Vec3, length: f32, world: &mut World) -> RayR
     let mut y: i32 = origin.y.floor() as i32;
     let mut z: i32 = origin.z.floor() as i32;
 
-    let step_x: i32 = if dx > 0.0 {1} else {-1};
-    let step_y: i32 = if dy > 0.0 {1} else {-1};
-    let step_z: i32 = if dz > 0.0 {1} else {-1};
+    let step_x: i32 = if dx > 0.0 { 1 } else { -1 };
+    let step_y: i32 = if dy > 0.0 { 1 } else { -1 };
+    let step_z: i32 = if dz > 0.0 { 1 } else { -1 };
 
-    let t_delta_x: f32 = if dx == 0.0 {f32::MAX} else {(1.0 / dx).abs()};
-    let t_delta_y: f32 = if dy == 0.0 {f32::MAX} else {(1.0 / dy).abs()};
-    let t_delta_z: f32 = if dz == 0.0 {f32::MAX} else {(1.0 / dz).abs()};
+    let t_delta_x: f32 = if dx == 0.0 {
+        f32::MAX
+    } else {
+        (1.0 / dx).abs()
+    };
+    let t_delta_y: f32 = if dy == 0.0 {
+        f32::MAX
+    } else {
+        (1.0 / dy).abs()
+    };
+    let t_delta_z: f32 = if dz == 0.0 {
+        f32::MAX
+    } else {
+        (1.0 / dz).abs()
+    };
 
-    let next_boundary_x: f32 = if step_x > 0 {x as f32 + 1.0} else {x as f32};
-    let next_boundary_y: f32 = if step_y > 0 {y as f32 + 1.0} else {y as f32};
-    let next_boundary_z: f32 = if step_z > 0 {z as f32 + 1.0} else {z as f32};
-    
-    let mut t_max_x: f32 = if dx == 0.0 {f32::MAX} else {(next_boundary_x - origin.x) / dx};
-    let mut t_max_y: f32 = if dy == 0.0 {f32::MAX} else {(next_boundary_y - origin.y) / dy};
-    let mut t_max_z: f32 = if dz == 0.0 {f32::MAX} else {(next_boundary_z - origin.z) / dz};
+    let next_boundary_x: f32 = if step_x > 0 { x as f32 + 1.0 } else { x as f32 };
+    let next_boundary_y: f32 = if step_y > 0 { y as f32 + 1.0 } else { y as f32 };
+    let next_boundary_z: f32 = if step_z > 0 { z as f32 + 1.0 } else { z as f32 };
 
-    if (t_max_x < 0.0) {t_max_x = 0.0;}
-    if (t_max_y < 0.0) {t_max_y = 0.0;}
-    if (t_max_z < 0.0) {t_max_z = 0.0;}
+    let mut t_max_x: f32 = if dx == 0.0 {
+        f32::MAX
+    } else {
+        (next_boundary_x - origin.x) / dx
+    };
+    let mut t_max_y: f32 = if dy == 0.0 {
+        f32::MAX
+    } else {
+        (next_boundary_y - origin.y) / dy
+    };
+    let mut t_max_z: f32 = if dz == 0.0 {
+        f32::MAX
+    } else {
+        (next_boundary_z - origin.z) / dz
+    };
+
+    if (t_max_x < 0.0) {
+        t_max_x = 0.0;
+    }
+    if (t_max_y < 0.0) {
+        t_max_y = 0.0;
+    }
+    if (t_max_z < 0.0) {
+        t_max_z = 0.0;
+    }
 
     let mut distance: f32 = 0.0;
     let mut last_step_axis: i32 = -1;
 
     while (distance <= length) {
-
         let block: u32 = world.get_block(x, y, z);
 
         if (block > 0) {
-
             result.hit = true;
             result.hit_position.x = x;
             result.hit_position.y = y;
@@ -66,14 +97,12 @@ pub fn cast_ray(origin: Vec3, dir: Vec3, length: f32, world: &mut World) -> RayR
             distance = t_max_x;
             t_max_x += t_delta_x;
             last_step_axis = 0;
-        }
-        else if (t_max_y < t_max_z) {
+        } else if (t_max_y < t_max_z) {
             y += step_y;
             distance = t_max_y;
             t_max_y += t_delta_y;
             last_step_axis = 1;
-        }
-        else {
+        } else {
             z += step_z;
             distance = t_max_z;
             t_max_z += t_delta_z;
@@ -89,7 +118,7 @@ pub struct RayResult {
     pub hit_position: IVec3,
     pub hit_normal: IVec3,
     pub hit_block: u32,
-    pub travel_distance: f32
+    pub travel_distance: f32,
 }
 
 impl RayResult {
@@ -99,7 +128,7 @@ impl RayResult {
             hit_position: IVec3::new(0, 0, 0),
             hit_normal: IVec3::new(0, 0, 0),
             hit_block: 0,
-            travel_distance: 0.0
+            travel_distance: 0.0,
         }
     }
 }
