@@ -5,6 +5,7 @@ use std::thread::spawn;
 
 use crate::engine::world::chunk;
 use crate::engine::world::chunk::*;
+use crate::engine::world::chunk_state::GenerationStep;
 use crate::engine::world::generation::terrain_generator;
 
 use fastnoise_lite::FastNoiseLite;
@@ -78,7 +79,7 @@ impl TerrainGenerator {
                 for y in 0..CHUNK_HEIGHT {
                     if y > 30 {continue;}
                     let local_voxel_index = chunk::voxel_index(x, y, z);
-                    chunk.block_data[local_voxel_index] = 4;
+                    chunk.blocktype_data[local_voxel_index] = 4;
                 }
             }
         }
@@ -88,23 +89,23 @@ impl TerrainGenerator {
         let height_offset = 60; // 30
 
         for x in 0..CHUNK_WIDTH {
-            let lx = chunk.cbx + x;
+            let lx = chunk.block_coord.x + x;
             for z in 0..CHUNK_WIDTH {
-                let lz = chunk.cbz + z;
+                let lz = chunk.block_coord.z + z;
 
                 let mut placed = false;
                 let value = self
                     .noise
-                    .get_noise_2d((x + chunk.cbx) as f32 * 2.0, (z + chunk.cbz) as f32 * 2.0);
+                    .get_noise_2d((x + chunk.block_coord.x) as f32 * 2.0, (z + chunk.block_coord.z) as f32 * 2.0);
                 let biome = self.biome_noise
-                    .get_noise_2d((x + chunk.cbx) as f32 * 1.0, (z + chunk.cbz) as f32 * 1.0);
+                    .get_noise_2d((x + chunk.block_coord.x) as f32 * 1.0, (z + chunk.block_coord.z) as f32 * 1.0);
 
                 for y in 0..CHUNK_HEIGHT {
                     let ly = y;
 
-                    let local_voxel_index = chunk::voxel_index(x, y, z);
+                    let local_voxel_index = Chunk::voxel_index(x, y, z);
                     if y == 0 {
-                        chunk.block_data[local_voxel_index] = 15;
+                        chunk.blocktype_data[local_voxel_index] = 15;
                         continue;
                     }
 
@@ -117,9 +118,9 @@ impl TerrainGenerator {
                     if y <= height_offset && cave <= 1.3 {
                         // 1.0
                         if y == height_offset {
-                            chunk.block_data[local_voxel_index] = if biome > 0.1 { 3 } else { 4 };
+                            chunk.blocktype_data[local_voxel_index] = if biome > 0.1 { 3 } else { 4 };
                         } else {
-                            chunk.block_data[local_voxel_index] = 8;
+                            chunk.blocktype_data[local_voxel_index] = 8;
                         }
                         continue;
                     }
@@ -132,20 +133,20 @@ impl TerrainGenerator {
 
                     if ((y - height_offset) as f32) < (value + overhang) * 50.0 && cave <= 1.3 {
                         // 1.0
-                        chunk.block_data[local_voxel_index] = 8;
+                        chunk.blocktype_data[local_voxel_index] = 8;
                         placed = true;
                         if rand::random_range(0..=1500) == 0 {
-                            chunk.block_data[local_voxel_index] = 14
+                            chunk.blocktype_data[local_voxel_index] = 14
                         } // 3
                     } else {
                         if placed {
                             placed = false;
-                            chunk.block_data[local_voxel_index] = if biome > 0.5 { 3 } else { 4 };
+                            chunk.blocktype_data[local_voxel_index] = if biome > 0.5 { 3 } else { 4 };
                         }
                     }
                 }
             }
         }
-        chunk.generation_step = GenerationStep::Terrain;
+        chunk.set_generation_step(GenerationStep::Complete); //Terrain
     }
 }

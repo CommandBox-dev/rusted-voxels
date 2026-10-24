@@ -15,6 +15,7 @@ use crate::engine::core::worker::Worker;
 use crate::engine::entities::character_controller::CharacterState;
 use crate::engine::gui::basic_ui::UIAnchor::AnchorBottomLeft;
 use crate::engine::gui::basic_ui::UIAnchor::AnchorCentered;
+use crate::engine::gui::basic_ui::UIAnchor::AnchorMidLeft;
 use crate::engine::gui::basic_ui::UIAnchor::AnchorMidRight;
 use crate::engine::gui::basic_ui::UIAnchor::AnchorTopLeft;
 use crate::engine::gui::basic_ui::UIAnchor::AnchorTopMid;
@@ -42,6 +43,8 @@ use crate::engine::resources::resource_manager::ResourceManager;
 use crate::engine::resources::shader::*;
 use crate::engine::resources::texture::*;
 use crate::engine::world::chunk::*;
+use crate::engine::world::chunk_manager::ChunkLoader;
+use crate::engine::world::voxel_coordinates::BlockCoord;
 use crate::engine::world::world::*;
 use crate::engine::*;
 
@@ -65,7 +68,8 @@ fn main() {
     let mut character_controller = CharacterState::new();
 
     let world_mid = ((world::world::RENDER_DISTANCE / 2) * CHUNK_WIDTH as u32) as f32;
-    let cam_spawn_pos = Vec3::new(world_mid, 200.0, world_mid);
+    //let cam_spawn_pos = Vec3::new(world_mid, 200.0, world_mid);
+    let cam_spawn_pos = Vec3::new(0.0, 200.0, 0.0);
 
     let mut camera = Camera::new(
         cam_spawn_pos,
@@ -79,6 +83,7 @@ fn main() {
     let window_transform = UITransformC::new(0, 0, window.width, window.height, AnchorTopLeft);
     let mut label = UILabel::new(10, 20, "x: 0.000, y: 0.000, z: 0.000", AnchorTopLeft, &window_transform);
     let mut chat_label = UILabel::new(10, -80, "Rusted-Voxels-v0.01", AnchorBottomLeft, &window_transform);
+    let mut loaded_label = UILabel::new(10, 0, "Chunks Loaded: _", AnchorMidLeft, &window_transform);
 
     audio_manager.play_sound_flat(resource_manager.white_grass_music.clone());
 
@@ -87,31 +92,35 @@ fn main() {
 
         if menu_manager.main_menu.button1.pressed && world.is_none() {
             world = Some(World::new());
-            world
-                .as_mut()
-                .unwrap()
-                .load(&resource_manager.block_models, &worker);
             window.set_cursor_mode(glfw::CursorMode::Disabled);
         }
 
         if let Some(world) = &mut world {
-            world.update();
+            world.update(&resource_manager.block_models, &worker);
+            world.chunk_manager.load_chunks_in_radius(
+                camera.position.x as i32,
+                camera.position.z as i32,
+                RENDER_DISTANCE,
+                &worker,
+                &resource_manager.block_models
+            );
         }
 
         if camera.position.y < -10.0 {
             camera.position.y = 200.0
         }
         if let Some(world) = &world {
-            if world.chunks_loaded == world::world::RENDER_AREA
-                && menu_manager.selected_menu == Menu::WorldLoadingScreen
+            if world.chunk_manager.chunks_loaded == world::world::RENDER_AREA
+            && menu_manager.selected_menu == Menu::Closed // WorldLoadingScreen
             {
                 menu_manager.selected_menu = Menu::Closed;
             }
-            menu_manager.update(&input, &mut window, world.chunks_loaded);
+            menu_manager.update(&input, &mut window, world.chunk_manager.chunks_loaded);
         } else {
             menu_manager.update(&input, &mut window, 0);
         }
         if let Some(world) = &mut world {
+            world.update_dirty_chunks(&resource_manager.block_models);
             character_controller.update(
                 &mut camera,
                 &input,
@@ -131,8 +140,16 @@ fn main() {
                 camera.position.z
             )
         );
+
         if let Some(world) = &mut world {
             world.update_dirty_chunks(&resource_manager.block_models);
+            loaded_label.build_mesh(
+                &format!(
+                    "Chunks Generating: {}, Chunks Loaded: {}",
+                    world.chunk_manager.chunks_generating,
+                    world.chunk_manager.chunks_loaded,
+                )
+            );
         }
 
         unsafe {
@@ -151,6 +168,7 @@ fn main() {
             &input,
             &label,
             &chat_label,
+            &loaded_label,
             &menu_manager,
         );
 

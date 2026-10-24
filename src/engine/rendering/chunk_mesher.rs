@@ -1,4 +1,5 @@
 use crate::blocks::block_model::*;
+use crate::engine::world::chunk_region::ChunkRegion;
 use crate::engine::world::world::*;
 use crate::world::chunk::*;
 
@@ -31,7 +32,7 @@ pub const AO_CURVE: [f32; 4] = [
     0.0, 0.3, 0.6, 1.0, //0.2, 0.5, 0.7, 1.0
 ];
 
-pub fn build_mesh(chunk: &Chunk, world: &World, block_models: &Vec<BlockModel>) -> Vec<f32> {
+pub fn build_mesh(chunk: &Chunk, region: &ChunkRegion, block_models: &Vec<BlockModel>) -> Vec<f32> {
     // the passing of the block model
 
     let mut mesh = Vec::new();
@@ -45,7 +46,7 @@ pub fn build_mesh(chunk: &Chunk, world: &World, block_models: &Vec<BlockModel>) 
                     continue;
                 }
 
-                let mask = get_face_mask(chunk, x, y, z, world);
+                let mask = get_face_mask(chunk, x, y, z, region);
 
                 for face in 0..6 {
                     if mask & (1 << face) != 0 {
@@ -57,7 +58,7 @@ pub fn build_mesh(chunk: &Chunk, world: &World, block_models: &Vec<BlockModel>) 
                             z,
                             block,
                             &block_models,
-                            get_ambient_occlusion(chunk, world, x, y, z, face),
+                            get_ambient_occlusion(chunk, region, x, y, z, face),
                         );
                     }
                 }
@@ -67,25 +68,25 @@ pub fn build_mesh(chunk: &Chunk, world: &World, block_models: &Vec<BlockModel>) 
     mesh
 }
 
-fn get_face_mask(chunk: &Chunk, x: i32, y: i32, z: i32, world: &World) -> u32 {
+fn get_face_mask(chunk: &Chunk, x: i32, y: i32, z: i32, region: &ChunkRegion) -> u32 {
     let mut mask = 0;
 
-    if chunk.get_block_global(world, x + 1, y, z) == 0 {
+    if chunk.get_block_global(region, x + 1, y, z) == 0 {
         mask |= 1;
     }
-    if chunk.get_block_global(world, x - 1, y, z) == 0 {
+    if chunk.get_block_global(region, x - 1, y, z) == 0 {
         mask |= 2;
     }
-    if chunk.get_block_global(world, x, y + 1, z) == 0 {
+    if chunk.get_block_global(region, x, y + 1, z) == 0 {
         mask |= 4;
     }
-    if chunk.get_block_global(world, x, y - 1, z) == 0 {
+    if chunk.get_block_global(region, x, y - 1, z) == 0 {
         mask |= 8;
     }
-    if chunk.get_block_global(world, x, y, z + 1) == 0 {
+    if chunk.get_block_global(region, x, y, z + 1) == 0 {
         mask |= 16;
     }
-    if chunk.get_block_global(world, x, y, z - 1) == 0 {
+    if chunk.get_block_global(region, x, y, z - 1) == 0 {
         mask |= 32;
     }
 
@@ -216,7 +217,7 @@ fn vertex_ao(side1: bool, side2: bool, corner: bool) -> u32 {
 
 fn get_ambient_occlusion(
     chunk: &Chunk,
-    world: &World,
+    region: &ChunkRegion,
     x: i32,
     y: i32,
     z: i32,
@@ -250,69 +251,69 @@ fn get_ambient_occlusion(
     match face {
         0 => {
             // x+ face
-            b1 = chunk.get_block_global(world, x + 1, y - 1, z + 0) != 0;
-            b2 = chunk.get_block_global(world, x + 1, y - 1, z - 1) != 0;
-            b3 = chunk.get_block_global(world, x + 1, y + 0, z - 1) != 0;
-            b4 = chunk.get_block_global(world, x + 1, y + 1, z - 1) != 0;
-            b5 = chunk.get_block_global(world, x + 1, y + 1, z + 0) != 0;
-            b6 = chunk.get_block_global(world, x + 1, y + 1, z + 1) != 0;
-            b7 = chunk.get_block_global(world, x + 1, y + 0, z + 1) != 0;
-            b8 = chunk.get_block_global(world, x + 1, y - 1, z + 1) != 0;
+            b1 = chunk.get_block_global(region, x + 1, y - 1, z + 0) != 0;
+            b2 = chunk.get_block_global(region, x + 1, y - 1, z - 1) != 0;
+            b3 = chunk.get_block_global(region, x + 1, y + 0, z - 1) != 0;
+            b4 = chunk.get_block_global(region, x + 1, y + 1, z - 1) != 0;
+            b5 = chunk.get_block_global(region, x + 1, y + 1, z + 0) != 0;
+            b6 = chunk.get_block_global(region, x + 1, y + 1, z + 1) != 0;
+            b7 = chunk.get_block_global(region, x + 1, y + 0, z + 1) != 0;
+            b8 = chunk.get_block_global(region, x + 1, y - 1, z + 1) != 0;
         }
         1 => {
             // x- face
-            b1 = chunk.get_block_global(world, x - 1, y - 1, z + 0) != 0;
-            b2 = chunk.get_block_global(world, x - 1, y - 1, z + 1) != 0;
-            b3 = chunk.get_block_global(world, x - 1, y + 0, z + 1) != 0;
-            b4 = chunk.get_block_global(world, x - 1, y + 1, z + 1) != 0;
-            b5 = chunk.get_block_global(world, x - 1, y + 1, z + 0) != 0;
-            b6 = chunk.get_block_global(world, x - 1, y + 1, z - 1) != 0;
-            b7 = chunk.get_block_global(world, x - 1, y + 0, z - 1) != 0;
-            b8 = chunk.get_block_global(world, x - 1, y - 1, z - 1) != 0;
+            b1 = chunk.get_block_global(region, x - 1, y - 1, z + 0) != 0;
+            b2 = chunk.get_block_global(region, x - 1, y - 1, z + 1) != 0;
+            b3 = chunk.get_block_global(region, x - 1, y + 0, z + 1) != 0;
+            b4 = chunk.get_block_global(region, x - 1, y + 1, z + 1) != 0;
+            b5 = chunk.get_block_global(region, x - 1, y + 1, z + 0) != 0;
+            b6 = chunk.get_block_global(region, x - 1, y + 1, z - 1) != 0;
+            b7 = chunk.get_block_global(region, x - 1, y + 0, z - 1) != 0;
+            b8 = chunk.get_block_global(region, x - 1, y - 1, z - 1) != 0;
         }
         2 => {
             // y+ face
-            b1 = chunk.get_block_global(world, x + 0, y + 1, z + 1) != 0;
-            b2 = chunk.get_block_global(world, x + 1, y + 1, z + 1) != 0;
-            b3 = chunk.get_block_global(world, x + 1, y + 1, z + 0) != 0;
-            b4 = chunk.get_block_global(world, x + 1, y + 1, z - 1) != 0;
-            b5 = chunk.get_block_global(world, x + 0, y + 1, z - 1) != 0;
-            b6 = chunk.get_block_global(world, x - 1, y + 1, z - 1) != 0;
-            b7 = chunk.get_block_global(world, x - 1, y + 1, z + 0) != 0;
-            b8 = chunk.get_block_global(world, x - 1, y + 1, z + 1) != 0;
+            b1 = chunk.get_block_global(region, x + 0, y + 1, z + 1) != 0;
+            b2 = chunk.get_block_global(region, x + 1, y + 1, z + 1) != 0;
+            b3 = chunk.get_block_global(region, x + 1, y + 1, z + 0) != 0;
+            b4 = chunk.get_block_global(region, x + 1, y + 1, z - 1) != 0;
+            b5 = chunk.get_block_global(region, x + 0, y + 1, z - 1) != 0;
+            b6 = chunk.get_block_global(region, x - 1, y + 1, z - 1) != 0;
+            b7 = chunk.get_block_global(region, x - 1, y + 1, z + 0) != 0;
+            b8 = chunk.get_block_global(region, x - 1, y + 1, z + 1) != 0;
         }
         3 => {
             // -y face
-            b1 = chunk.get_block_global(world, x + 1, y - 1, z + 0) != 0;
-            b2 = chunk.get_block_global(world, x + 1, y - 1, z - 1) != 0;
-            b3 = chunk.get_block_global(world, x + 0, y - 1, z - 1) != 0;
-            b4 = chunk.get_block_global(world, x - 1, y - 1, z - 1) != 0;
-            b5 = chunk.get_block_global(world, x - 1, y - 1, z + 0) != 0;
-            b6 = chunk.get_block_global(world, x - 1, y - 1, z + 1) != 0;
-            b7 = chunk.get_block_global(world, x + 0, y - 1, z + 1) != 0;
-            b8 = chunk.get_block_global(world, x + 1, y - 1, z + 1) != 0;
+            b1 = chunk.get_block_global(region, x - 0, y - 1, z - 1) != 0;
+            b2 = chunk.get_block_global(region, x + 1, y - 1, z - 1) != 0;
+            b3 = chunk.get_block_global(region, x + 1, y - 1, z + 0) != 0;
+            b4 = chunk.get_block_global(region, x + 1, y - 1, z + 1) != 0;
+            b5 = chunk.get_block_global(region, x - 0, y - 1, z + 1) != 0;
+            b6 = chunk.get_block_global(region, x - 1, y - 1, z + 1) != 0;
+            b7 = chunk.get_block_global(region, x - 1, y - 1, z + 0) != 0;
+            b8 = chunk.get_block_global(region, x - 1, y - 1, z - 1) != 0;
         }
         4 => {
             // z+ face
-            b1 = chunk.get_block_global(world, x + 0, y - 1, z + 1) != 0;
-            b2 = chunk.get_block_global(world, x + 1, y - 1, z + 1) != 0;
-            b3 = chunk.get_block_global(world, x + 1, y + 0, z + 1) != 0;
-            b4 = chunk.get_block_global(world, x + 1, y + 1, z + 1) != 0;
-            b5 = chunk.get_block_global(world, x + 0, y + 1, z + 1) != 0;
-            b6 = chunk.get_block_global(world, x - 1, y + 1, z + 1) != 0;
-            b7 = chunk.get_block_global(world, x - 1, y + 0, z + 1) != 0;
-            b8 = chunk.get_block_global(world, x - 1, y - 1, z + 1) != 0;
+            b1 = chunk.get_block_global(region, x + 0, y - 1, z + 1) != 0;
+            b2 = chunk.get_block_global(region, x + 1, y - 1, z + 1) != 0;
+            b3 = chunk.get_block_global(region, x + 1, y + 0, z + 1) != 0;
+            b4 = chunk.get_block_global(region, x + 1, y + 1, z + 1) != 0;
+            b5 = chunk.get_block_global(region, x + 0, y + 1, z + 1) != 0;
+            b6 = chunk.get_block_global(region, x - 1, y + 1, z + 1) != 0;
+            b7 = chunk.get_block_global(region, x - 1, y + 0, z + 1) != 0;
+            b8 = chunk.get_block_global(region, x - 1, y - 1, z + 1) != 0;
         }
         5 => {
             // z- face
-            b1 = chunk.get_block_global(world, x + 0, y - 1, z - 1) != 0;
-            b2 = chunk.get_block_global(world, x - 1, y - 1, z - 1) != 0;
-            b3 = chunk.get_block_global(world, x - 1, y + 0, z - 1) != 0;
-            b4 = chunk.get_block_global(world, x - 1, y + 1, z - 1) != 0;
-            b5 = chunk.get_block_global(world, x + 0, y + 1, z - 1) != 0;
-            b6 = chunk.get_block_global(world, x + 1, y + 1, z - 1) != 0;
-            b7 = chunk.get_block_global(world, x + 1, y + 0, z - 1) != 0;
-            b8 = chunk.get_block_global(world, x + 1, y - 1, z - 1) != 0;
+            b1 = chunk.get_block_global(region, x + 0, y - 1, z - 1) != 0;
+            b2 = chunk.get_block_global(region, x - 1, y - 1, z - 1) != 0;
+            b3 = chunk.get_block_global(region, x - 1, y + 0, z - 1) != 0;
+            b4 = chunk.get_block_global(region, x - 1, y + 1, z - 1) != 0;
+            b5 = chunk.get_block_global(region, x + 0, y + 1, z - 1) != 0;
+            b6 = chunk.get_block_global(region, x + 1, y + 1, z - 1) != 0;
+            b7 = chunk.get_block_global(region, x + 1, y + 0, z - 1) != 0;
+            b8 = chunk.get_block_global(region, x + 1, y - 1, z - 1) != 0;
         }
         _ => {
             b1 = false;

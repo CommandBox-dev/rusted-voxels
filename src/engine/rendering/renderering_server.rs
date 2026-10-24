@@ -160,6 +160,7 @@ impl RenderingServer {
         input: &Input,
         label: &UILabel,
         chat_label: &UILabel,
+        loaded_label: &UILabel,
         menu_manager: &MenuManager,
     ) {
         // TODO: create player character that stores player position and move camera into RenderingServer
@@ -208,6 +209,7 @@ impl RenderingServer {
             resource_manager.font_tex.bind(0);
             label.draw();
             chat_label.draw();
+            loaded_label.draw();
             gl::Enable(gl::DEPTH_TEST);
         }
     }

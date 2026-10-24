@@ -67,7 +67,7 @@ pub fn upload_chunk_mesh(chunk: &mut Chunk, mesh: Vec<f32>) {
 
 pub fn render_chunk_mesh(chunk: &Chunk, model_loc: i32) {
     unsafe {
-        let model = Mat4::from_translation(Vec3::new((chunk.cbx) as f32, 0.0, (chunk.cbz) as f32));
+        let model = Mat4::from_translation(Vec3::new((chunk.block_coord.x) as f32, 0.0, (chunk.block_coord.z) as f32));
         gl::BindVertexArray(chunk.vao);
         gl::UniformMatrix4fv(model_loc, 1, gl::FALSE, model.to_cols_array().as_ptr());
         gl::DrawArrays(gl::TRIANGLES, 0, chunk.vertex_count as i32);
@@ -75,9 +75,11 @@ pub fn render_chunk_mesh(chunk: &Chunk, model_loc: i32) {
 }
 
 pub fn render_chunks(world: &mut World, model_loc: i32) {
-    for x in 0..world::RENDER_DISTANCE {
-        for z in 0..world::RENDER_DISTANCE {
-            let chunk = world.get_chunk(x as i32, z as i32);
+    let w = world::RENDER_DISTANCE as i32;
+
+    for x in -w..w {
+        for z in -w..w {
+            let chunk = world.chunk_manager.get_avl_chunk_ref(x as i32, z as i32);
             if let Some(chunk) = chunk {
                 chunk_renderer::render_chunk_mesh(&chunk, model_loc);
             }

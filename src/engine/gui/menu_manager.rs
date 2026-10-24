@@ -150,7 +150,7 @@ impl MainMenu {
             input.is_mouse_button_pressed(MouseButton::Left as i32),
         );
         if self.button1.pressed {
-            return Some(Menu::WorldLoadingScreen);
+            return Some(Menu::Closed); // WorldLoadingScreen
         }
         None
     }
