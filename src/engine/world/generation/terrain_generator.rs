@@ -8,8 +8,11 @@ use crate::engine::world::chunk::*;
 use crate::engine::world::chunk_region::ChunkRegion;
 use crate::engine::world::chunk_state::GenerationStep;
 use crate::engine::world::generation::terrain_generator;
+use crate::engine::world::structure::Structure;
 
 use fastnoise_lite::FastNoiseLite;
+use fastnoise_lite::FractalType;
+use fastnoise_lite::NoiseType;
 use fastnoise_lite::NoiseType::OpenSimplex2;
 use fastnoise_lite::NoiseType::Perlin;
 use rand::Rng;
@@ -55,8 +58,15 @@ impl TerrainGenerator {
         terra_gen.biome_noise.set_frequency(Some(0.01));
 
         terra_gen.noise.set_frequency(Some(0.015));
-        terra_gen.noise.set_domain_warp_amp(Some(25.0));
+        //terra_gen.noise.set_domain_warp_amp(Some(25.0));
 
+        terra_gen.noise.set_noise_type(Some(NoiseType::OpenSimplex2));
+        terra_gen.noise.set_fractal_type(Some(FractalType::FBm));
+        terra_gen.noise.set_frequency(Some(0.005));
+        //terra_gen.noise.set_fractal_lacunarity(Some(3.0));
+        terra_gen.noise.set_fractal_octaves(Some(6));
+        //terra_gen.noise.set_fractal_gain(Some(0.5));
+        
         terra_gen.overhang_noise.set_seed(Some(9334));
         terra_gen.overhang_noise.set_fractal_octaves(Some(4));
         terra_gen.overhang_noise.set_frequency(Some(0.01));
@@ -157,9 +167,9 @@ impl TerrainGenerator {
                 let gz = chunk.block_coord.z + z;
 
                 let value = self.noise.get_noise_2d(
-                    gx as f32 * 0.1,
-                    gz as f32 * 0.1,
-                );
+                    gx as f32 * 1.0,
+                    gz as f32 * 1.0,
+                ) * 50.0 + 50.0;
                 
                 let mut placed = false;
 
@@ -172,7 +182,7 @@ impl TerrainGenerator {
                         continue;
                     }
 
-                    if (y as f32) < (value * 50.0) {
+                    if value > y as f32 {
                         chunk.blocktype_data[index] = 8;
                         placed = true;
                     } else {
@@ -187,19 +197,7 @@ impl TerrainGenerator {
         chunk.set_generation_step(GenerationStep::Terrain);
     }
 
-    pub fn generate_structure(chunk: &mut Chunk, region: &mut ChunkRegion) { // &Structure
-        let lx = random_range(0..CHUNK_WIDTH);
-        let lz = random_range(0..CHUNK_WIDTH);
-        let top = chunk.get_top_block(lx, lz);
-
-        let w = random_range(1..3);
-
-        for x in lx-w..lx+w {
-            for z in lz-w..lz+w {
-                for y in top.1..top.1+5 {
-                    chunk.set_block_global(region, x, y as i32, z, 8);
-                }
-            }
-        }
+    pub fn generate_structure<S: Structure>(structure: &S, chunk: &mut Chunk, region: &mut ChunkRegion) {
+        structure.generate(chunk, region);
     }
 }

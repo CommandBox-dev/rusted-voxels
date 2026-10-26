@@ -1,6 +1,8 @@
 use std::{collections::HashMap, sync::mpsc::TryRecvError};
 
-use crate::engine::{blocks::{block::Block, block_model::{self, BlockModel}}, core::worker::Worker, rendering::{chunk_mesher, chunk_renderer::{self, upload_chunk_mesh}}, util::utility::inside_circle, world::{chunk::{CHUNK_WIDTH, Chunk}, chunk_manager::ChunkState::{Available, InWork}, chunk_region::ChunkRegion, chunk_state::{ChunkState, GenerationStep}, generation::{self, terrain_generator::{TerrainGenerator, Worldtype}}, voxel_coordinates::*, world::RENDER_DISTANCE}};
+use rand::random_range;
+
+use crate::{engine::{blocks::{block::Block, block_model::{self, BlockModel}}, core::worker::Worker, rendering::{chunk_mesher, chunk_renderer::{self, upload_chunk_mesh}}, util::utility::inside_circle, world::{chunk::{CHUNK_WIDTH, Chunk}, chunk_manager::ChunkState::{Available, InWork}, chunk_region::ChunkRegion, chunk_state::{ChunkState, GenerationStep}, generation::{self, terrain_generator::{TerrainGenerator, Worldtype}}, voxel_coordinates::*, world::RENDER_DISTANCE}}, game::terrain_features::{oak_tree::OakTree, test_structure::TestStruct}};
 
 
 /// Instanced once per loaded dimension
@@ -101,6 +103,29 @@ impl ChunkManager {
                 }
             }
         }
+
+        let unloading_dist = RENDER_DISTANCE as i32 + 1;
+
+        let mut c = Vec::new();
+        for (key, val) in &self.chunks {
+            match val {
+                ChunkState::Available(chunk) => {
+                    // unload chunk
+                    if sx - chunk.coord.x > unloading_dist
+                    || sz - chunk.coord.z > unloading_dist
+                    || sx - chunk.coord.x < -unloading_dist
+                    || sz - chunk.coord.z < -unloading_dist {
+                        c.push(chunk.coord);
+                    }
+                }
+                _ => {}
+            }
+        }
+        for coord in c {
+            if let Available(chunk) = self.chunks.remove(&coord).unwrap() {
+                self.free_chunk(chunk);
+            }
+        }
     }
 
     pub fn generate_chunk(&mut self, cx: i32, cz: i32, block_models: &Vec<BlockModel>, worker: &Worker) {
@@ -136,8 +161,8 @@ impl ChunkManager {
         self.chunks_loaded += 1;
     }
 
-    pub fn free_chunk(&mut self, chunk: &Chunk) {
-        todo!();
+    pub fn free_chunk(&mut self, chunk: Chunk) {
+        self.freed_chunks.push(chunk);
     }
 
     pub fn save_chunk(&mut self, chunk: &Chunk) {
@@ -145,7 +170,7 @@ impl ChunkManager {
     }
 
     pub fn destroy_chunk(&mut self, chunk: Chunk) {
-        todo!();
+        chunk_renderer::destroy_chunk_mesh(&chunk);
         self.chunks_loaded -= 1;
     }
 
@@ -162,10 +187,10 @@ impl ChunkManager {
     }
 
     pub fn update_freeing_queue(&mut self) {
-        for chunk in self.freed_chunks.pop() {
+        while let Some(chunk) = self.freed_chunks.pop() {
             // save chunk
             // destroy chunk
-            todo!();
+            self.destroy_chunk(chunk);
         }
     }
 
@@ -194,6 +219,8 @@ impl ChunkManager {
                 Err(TryRecvError::Disconnected) => { /* inactive / panicked */ }
             }
         }
+
+        self.update_freeing_queue();
 
         for i in 0..self.meshed_chunks.len() {
             
@@ -270,7 +297,9 @@ impl ChunkManager {
             let mut chunk = self.take_avl_chunk(coord.x, coord.z).unwrap();
 
             let receiver = worker.execute(move || {
-                TerrainGenerator::generate_structure(&mut chunk, &mut region);
+                for i in 1..random_range(1..20) {
+                    TerrainGenerator::generate_structure(&OakTree {}, &mut chunk, &mut region);
+                }
                 chunk.set_generation_step(GenerationStep::Complete);
 
                 (chunk, region)

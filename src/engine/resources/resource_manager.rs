@@ -74,6 +74,8 @@ impl ResourceManager {
         let bomb_top = manual.tile_atlas.get_tile(String::from("bomb_top"));
         let face = manual.tile_atlas.get_tile(String::from("face"));
         let pillar = manual.tile_atlas.get_tile(String::from("pillar"));
+        let leafes = manual.tile_atlas.get_tile(String::from("leafes"));
+        let log = manual.tile_atlas.get_tile(String::from("log"));
 
         manual.block_models = vec![
             BlockModel::new_cube(cobblestone),
@@ -92,8 +94,10 @@ impl ResourceManager {
             BlockModel::new_cube(bricks),
             BlockModel::new_cube(ore),
             BlockModel::new_cube(base),
-            BlockModel::new_cube_sides_top_bottom(pillar, labyrinth_stone, labyrinth_stone),
-            BlockModel::new_cube_sides_top_bottom(face, labyrinth_stone, labyrinth_stone),
+            //BlockModel::new_cube_sides_top_bottom(pillar, labyrinth_stone, labyrinth_stone),
+            //BlockModel::new_cube_sides_top_bottom(face, labyrinth_stone, labyrinth_stone),
+            BlockModel::new_cube(log),
+            BlockModel::new_cube(leafes),
         ];
 
         manual

@@ -29,7 +29,8 @@ pub const NORMAL_LIGHT: [f32; 6] = [
 ];
 
 pub const AO_CURVE: [f32; 4] = [
-    0.0, 0.3, 0.6, 1.0, //0.2, 0.5, 0.7, 1.0
+    //0.0, 0.3, 0.6, 1.0,
+    0.2, 0.5, 0.7, 1.0
 ];
 
 pub fn build_mesh(chunk: &Chunk, region: &ChunkRegion, block_models: &Vec<BlockModel>) -> Vec<f32> {

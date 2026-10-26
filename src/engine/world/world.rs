@@ -6,7 +6,7 @@ use rand::{rand_core::block, random_range, seq::IndexedRandom};
 use crate::engine::{blocks::block_model::BlockModel, core::worker::Worker, world::{chunk::{CHUNK_HEIGHT, CHUNK_WIDTH}, chunk_manager::ChunkManager}}
 ;
 
-pub const RENDER_DISTANCE: u32 = 16;
+pub const RENDER_DISTANCE: u32 = 32;
 pub const RENDER_AREA: u32 = RENDER_DISTANCE * RENDER_DISTANCE;
 
 pub struct World {

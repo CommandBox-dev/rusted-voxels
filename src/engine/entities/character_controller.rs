@@ -121,7 +121,7 @@ impl CharacterState {
         }
 
         if menu_manager.selected_menu == Menu::Closed && input.is_down(Key::Space as i32) {
-            self.velocity.y = 0.1;
+            self.velocity.y = 0.8; // 0.1
         } else {
             self.velocity.y += (-9.8 * 0.045 * window.delta);
         }

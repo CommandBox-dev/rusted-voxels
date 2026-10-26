@@ -5,3 +5,4 @@ pub mod chunk_manager;
 pub mod voxel_coordinates;
 pub mod chunk_region;
 pub mod chunk_state;
+pub mod structure;

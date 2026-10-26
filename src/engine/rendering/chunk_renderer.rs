@@ -67,6 +67,13 @@ pub fn upload_chunk_mesh(chunk: &mut Chunk, mesh: Vec<f32>) {
     }
 }
 
+pub fn destroy_chunk_mesh(chunk: &Chunk) {
+    unsafe {
+        gl::DeleteVertexArrays(1, &chunk.vao);
+        gl::DeleteBuffers(1, &chunk.vbo);
+    }
+}
+
 pub fn render_chunk_mesh(chunk: &Chunk, model_loc: i32, fade_loc: i32) {
     unsafe {
         let delta = 0.01666666667;
