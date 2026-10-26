@@ -16,6 +16,7 @@ pub struct ResourceManager {
 
     pub base_shader: Shader,
     pub ui_shader: Shader,
+    pub chunk_shader: Shader,
 
     pub place_sound: StaticSoundData,
     pub break_sound: StaticSoundData,
@@ -39,6 +40,10 @@ impl ResourceManager {
             ui_shader: Shader::load_from_file(
                 "./res/shaders/basic_ui.vert",
                 "./res/shaders/basic_ui.frag",
+            ),
+            chunk_shader: Shader::load_from_file(
+                "./res/shaders/chunk.vert",
+                "./res/shaders/chunk.frag",
             ),
 
             place_sound: StaticSoundData::from_file("./res/audio/place.mp3")

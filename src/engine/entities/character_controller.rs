@@ -134,7 +134,7 @@ impl CharacterState {
         let mut speed = 5.0;
 
         if input.is_down(Key::LeftShift as i32) {
-            speed *= 3.0;
+            speed *= 15.0; // 3.0
         }
 
         let vel_y = self.velocity.y;

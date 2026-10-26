@@ -27,8 +27,8 @@ pub struct GameWindow {
     time_last_frame: Instant,
 }
 
+// Renamed Window to GameWindow to avoid confusion with the glfw Window struct
 impl GameWindow {
-    // renamed Window to GameWindow to avoid confusion with the glfw Window struct
     pub fn new(title: &str, width: u32, height: u32) -> Self {
         // glfw initialization
         let mut glfw = glfw::init(glfw::fail_on_errors).unwrap();
@@ -47,14 +47,14 @@ impl GameWindow {
 
         let (fb_width, fb_height) = handle.get_framebuffer_size();
 
-        handle.make_current();
         handle.set_key_polling(true);
         handle.set_mouse_button_polling(true);
         handle.set_cursor_pos_polling(true);
         handle.set_size_polling(true);
         handle.set_framebuffer_size_polling(true);
         handle.set_pos_polling(true);
-
+        
+        handle.make_current();
         handle.show();
         handle.focus();
 
@@ -138,6 +138,10 @@ impl GameWindow {
                     input.read_window_event(event);
                 }
             }
+        }
+
+        unsafe {
+            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         }
     }
 

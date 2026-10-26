@@ -51,24 +51,28 @@ use crate::engine::*;
 fn main() {
     let mut window = GameWindow::new("rusted-voxels", 1920, 1080);
     let mut input = Input::new(&window);
-    let resource_manager = ResourceManager::new();
+
+    let mut resource_manager = ResourceManager::new();
     let mut audio_manager = AudioServer::new();
     let mut menu_manager = MenuManager::new(&window);
+    
     menu_manager.set_menu(Menu::Main);
+    
     let mut rendering_server = RenderingServer::new();
+
     rendering_server.update_shader_unif_loc(&resource_manager);
+
     let (vao_crosshair, vbo_crosshair) = upload_crosshair(
         resource_manager
             .tile_atlas
             .get_tile(String::from("crosshair")),
         &window,
     );
-    let worker = Worker::new(4);
+
+    let worker = Worker::new(10); // 4
     let mut world: Option<World> = None;
     let mut character_controller = CharacterState::new();
 
-    let world_mid = ((world::world::RENDER_DISTANCE / 2) * CHUNK_WIDTH as u32) as f32;
-    //let cam_spawn_pos = Vec3::new(world_mid, 200.0, world_mid);
     let cam_spawn_pos = Vec3::new(0.0, 200.0, 0.0);
 
     let mut camera = Camera::new(
@@ -83,12 +87,21 @@ fn main() {
     let window_transform = UITransformC::new(0, 0, window.width, window.height, AnchorTopLeft);
     let mut label = UILabel::new(10, 20, "x: 0.000, y: 0.000, z: 0.000", AnchorTopLeft, &window_transform);
     let mut chat_label = UILabel::new(10, -80, "Rusted-Voxels-v0.01", AnchorBottomLeft, &window_transform);
-    let mut loaded_label = UILabel::new(10, 0, "Chunks Loaded: _", AnchorMidLeft, &window_transform);
+    let mut loaded_label = UILabel::new(10, 100, "Chunks Loaded: _", AnchorTopLeft, &window_transform);
 
-    audio_manager.play_sound_flat(resource_manager.white_grass_music.clone());
+    //audio_manager.play_sound_flat(resource_manager.white_grass_music.clone());
 
     'game_loop: while !window.should_close() {
         window.poll_events(&mut input, &mut camera);
+
+        label.build_mesh(
+            &format!(
+                "x: {:.3}, y: {:.3}, z: {:.3}",
+                camera.position.x,
+                camera.position.y + AABB::HUMANOID.min.y,
+                camera.position.z
+            )
+        );
 
         if menu_manager.main_menu.button1.pressed && world.is_none() {
             world = Some(World::new());
@@ -109,6 +122,7 @@ fn main() {
         if camera.position.y < -10.0 {
             camera.position.y = 200.0
         }
+
         if let Some(world) = &world {
             if world.chunk_manager.chunks_loaded == world::world::RENDER_AREA
             && menu_manager.selected_menu == Menu::Closed // WorldLoadingScreen
@@ -119,8 +133,9 @@ fn main() {
         } else {
             menu_manager.update(&input, &mut window, 0);
         }
+
         if let Some(world) = &mut world {
-            world.update_dirty_chunks(&resource_manager.block_models);
+            world.update_dirty_chunks(&resource_manager.block_models, &worker);
             character_controller.update(
                 &mut camera,
                 &input,
@@ -130,19 +145,7 @@ fn main() {
                 &mut audio_manager,
                 &resource_manager,
             );
-        }
 
-        label.build_mesh(
-            &format!(
-                "x: {:.3}, y: {:.3}, z: {:.3}",
-                camera.position.x,
-                camera.position.y + AABB::HUMANOID.min.y,
-                camera.position.z
-            )
-        );
-
-        if let Some(world) = &mut world {
-            world.update_dirty_chunks(&resource_manager.block_models);
             loaded_label.build_mesh(
                 &format!(
                     "Chunks Generating: {}, Chunks Loaded: {}",
@@ -152,12 +155,6 @@ fn main() {
             );
         }
 
-        unsafe {
-            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-        }
-        resource_manager.base_shader.bind();
-
-        // Yes, this horrible implementation will be changed.
         rendering_server.render(
             &resource_manager,
             &camera,

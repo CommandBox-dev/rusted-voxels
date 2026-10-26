@@ -30,7 +30,6 @@ pub struct UIModelC {
     vertex_count: u32,
 }
 
-
 impl UITransformC {
     pub fn new(x: i32, y: i32, w: u32, h: u32, anchor: UIAnchor) -> Self {
         Self {x, y, tx: 0, ty: 0, w, h, anchor}
@@ -206,7 +205,6 @@ impl UIModelC {
         }
     }
 }
-
 
 pub trait UIElement {
     fn get_transform(&self) -> &UITransformC;

@@ -1,5 +1,7 @@
 use glfw::*;
 
+use crate::engine::world::chunk_manager;
+use crate::engine::world::chunk_state::ChunkState::Available;
 use crate::engine::world::world::{self, World};
 use crate::engine::{
     rendering::chunk_renderer,
@@ -65,24 +67,27 @@ pub fn upload_chunk_mesh(chunk: &mut Chunk, mesh: Vec<f32>) {
     }
 }
 
-pub fn render_chunk_mesh(chunk: &Chunk, model_loc: i32) {
+pub fn render_chunk_mesh(chunk: &Chunk, model_loc: i32, fade_loc: i32) {
     unsafe {
+        let delta = 0.01666666667;
+        let fade = (chunk.uptime as f32 * 1.5 * delta).min(1.0);
+
         let model = Mat4::from_translation(Vec3::new((chunk.block_coord.x) as f32, 0.0, (chunk.block_coord.z) as f32));
+
         gl::BindVertexArray(chunk.vao);
         gl::UniformMatrix4fv(model_loc, 1, gl::FALSE, model.to_cols_array().as_ptr());
+        gl::Uniform1f(fade_loc, fade);
         gl::DrawArrays(gl::TRIANGLES, 0, chunk.vertex_count as i32);
     }
 }
 
-pub fn render_chunks(world: &mut World, model_loc: i32) {
-    let w = world::RENDER_DISTANCE as i32;
+pub fn render_chunks(world: &mut World, model_loc: i32, fade_loc: i32) {
 
-    for x in -w..w {
-        for z in -w..w {
-            let chunk = world.chunk_manager.get_avl_chunk_ref(x as i32, z as i32);
-            if let Some(chunk) = chunk {
-                chunk_renderer::render_chunk_mesh(&chunk, model_loc);
-            }
+    for (key, val) in &mut world.chunk_manager.chunks {
+        if let Available(chunk) = val {
+            if chunk.vao == 0 {continue;}
+            chunk.uptime += 1;
+            chunk_renderer::render_chunk_mesh(&chunk, model_loc, fade_loc);
         }
     }
 

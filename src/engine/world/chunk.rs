@@ -11,8 +11,10 @@ pub static CHUNK_VOLUME: i32 = CHUNK_AREA * CHUNK_HEIGHT;
 // cx, cy, cz = chunk coordinates
 // cbx, cby, cbz = chunk coordinates in global block coordinates; chunk (cx: 1, cz: 3) = (cbx: 16, cbz: 48)
 // lx, ly, lz = local block coordinates
-// gx, gy, gz = global block coordinates
+// gx, gy, gz = global block
 
+// TODO: Chunks should own their matrices / the chunk mesh
+// TODO: Chunk mesh should be a seperate genral purpose or custom mesh struct
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Chunk {
@@ -22,6 +24,8 @@ pub struct Chunk {
     dirty: bool,
 
     pub blocktype_data: Box<[u32; CHUNK_VOLUME as usize]>,
+
+    pub uptime: u32,
 
     // mesh
     pub vao: u32,
@@ -46,6 +50,8 @@ impl Chunk {
             dirty: false,
 
             blocktype_data,
+
+            uptime: 0,
 
             vao: 0,
             vbo: 0,
@@ -94,7 +100,7 @@ impl Chunk {
     }
 
     /// returns the block of the adjacent chunk if the position is outside chunk bounds
-    /// TODO: rename top chunk to up chunk
+    // TODO: rename top chunk to up chunk
     pub fn get_block_global(&self, region: &ChunkRegion, lx: i32, ly: i32, lz: i32) -> u32 {
         if ly < 0 || ly >= CHUNK_HEIGHT {
             return u32::MAX;
@@ -177,18 +183,35 @@ impl Chunk {
         self.set_block(lx, ly, lz, block)
     }
 
-    pub fn set_block_and_get(&mut self, x: i32, y: i32, z: i32, block: u32) -> u32 {
-        // sets block and returns the block it replaced
+    /// replaces block and returns the replaced block
+    pub fn insert_block(&mut self, lx: i32, ly: i32, lz: i32, block: u32) -> u32 {
 
-        if x < 0 || x >= CHUNK_WIDTH || z < 0 || z >= CHUNK_WIDTH || y < 0 || y >= CHUNK_HEIGHT {
+        if lx < 0 || lx >= CHUNK_WIDTH || lz < 0 || lz >= CHUNK_WIDTH || ly < 0 || ly >= CHUNK_HEIGHT {
             return u32::MAX;
         }
 
-        let index = Chunk::voxel_index(x, y, z);
+        let index = Chunk::voxel_index(lx, ly, lz);
 
         let replaced_block = self.blocktype_data[index];
         self.blocktype_data[index] = block;
 
         replaced_block
+    }
+
+    /// Returns the top block on that coordinate and the height
+    /// or AIR and 0 if there is only air.
+    pub fn get_top_block(&self, lx: i32, lz: i32) -> (u32, u32) {
+
+        for ly in (0..CHUNK_HEIGHT).rev() {
+
+            let index = Chunk::voxel_index(lx, ly, lz);
+            let block = self.blocktype_data[index];
+
+            if block != 0 {
+                return (block, ly as u32);
+            }
+        }
+
+        (0, 0)
     }
 }

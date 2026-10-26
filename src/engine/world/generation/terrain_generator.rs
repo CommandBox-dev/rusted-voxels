@@ -5,6 +5,7 @@ use std::thread::spawn;
 
 use crate::engine::world::chunk;
 use crate::engine::world::chunk::*;
+use crate::engine::world::chunk_region::ChunkRegion;
 use crate::engine::world::chunk_state::GenerationStep;
 use crate::engine::world::generation::terrain_generator;
 
@@ -12,6 +13,7 @@ use fastnoise_lite::FastNoiseLite;
 use fastnoise_lite::NoiseType::OpenSimplex2;
 use fastnoise_lite::NoiseType::Perlin;
 use rand::Rng;
+use rand::random_range;
 
 pub struct TerrainGenerator {
     pub seed: i32,
@@ -73,7 +75,7 @@ impl TerrainGenerator {
         terra_gen
     }
 
-    pub fn generate_chunk_terrain(&self, chunk: &mut Chunk, total_block_count: u32) {
+    pub fn generate_terrain(&self, chunk: &mut Chunk, total_block_count: u32) {
         /*for x in 0..CHUNK_WIDTH {
             for z in 0..CHUNK_WIDTH {
                 for y in 0..CHUNK_HEIGHT {
@@ -88,7 +90,7 @@ impl TerrainGenerator {
 
         let height_offset = 60; // 30
 
-        for x in 0..CHUNK_WIDTH {
+        /*for x in 0..CHUNK_WIDTH {
             let lx = chunk.block_coord.x + x;
             for z in 0..CHUNK_WIDTH {
                 let lz = chunk.block_coord.z + z;
@@ -146,7 +148,58 @@ impl TerrainGenerator {
                     }
                 }
             }
+        }*/
+
+
+        for x in 0..CHUNK_WIDTH {
+            let gx = chunk.block_coord.x + x;
+            for z in 0..CHUNK_WIDTH {
+                let gz = chunk.block_coord.z + z;
+
+                let value = self.noise.get_noise_2d(
+                    gx as f32 * 0.1,
+                    gz as f32 * 0.1,
+                );
+                
+                let mut placed = false;
+
+                for y in 0..CHUNK_HEIGHT {
+
+                    let index = Chunk::voxel_index(x, y, z);
+
+                    if y == 0 {
+                        chunk.blocktype_data[index] = 15;
+                        continue;
+                    }
+
+                    if (y as f32) < (value * 50.0) {
+                        chunk.blocktype_data[index] = 8;
+                        placed = true;
+                    } else {
+                        if placed {
+                            chunk.blocktype_data[index] = 4;
+                        }
+                        placed = false;
+                    }
+                }
+            }
         }
-        chunk.set_generation_step(GenerationStep::Complete); //Terrain
+        chunk.set_generation_step(GenerationStep::Terrain);
+    }
+
+    pub fn generate_structure(chunk: &mut Chunk, region: &mut ChunkRegion) { // &Structure
+        let lx = random_range(0..CHUNK_WIDTH);
+        let lz = random_range(0..CHUNK_WIDTH);
+        let top = chunk.get_top_block(lx, lz);
+
+        let w = random_range(1..3);
+
+        for x in lx-w..lx+w {
+            for z in lz-w..lz+w {
+                for y in top.1..top.1+5 {
+                    chunk.set_block_global(region, x, y as i32, z, 8);
+                }
+            }
+        }
     }
 }

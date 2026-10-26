@@ -112,9 +112,16 @@ pub struct RenderingServer {
     // ui shader
     ui_proj_loc: i32,
     ui_tex_loc: i32,
+    // chunk shader
+    chunk_model_loc: i32,
+    chunk_view_loc: i32,
+    chunk_proj_loc: i32,
+    chunk_tex_loc: i32,
+    chunk_fade_loc: i32,
 }
 
 impl RenderingServer {
+
     pub fn new() -> Self {
         Self {
             base_model_loc: 0,
@@ -124,10 +131,18 @@ impl RenderingServer {
 
             ui_proj_loc: 0,
             ui_tex_loc: 0,
+
+            chunk_model_loc: 0,
+            chunk_view_loc: 0,
+            chunk_proj_loc: 0,
+            chunk_tex_loc: 0,
+            chunk_fade_loc: 0,
         }
     }
 
     pub fn update_shader_unif_loc(&mut self, resource_manager: &ResourceManager) {
+
+        // base shader
         self.base_model_loc = resource_manager
             .base_shader
             .get_unif_loc(c"u_model".as_ptr());
@@ -141,12 +156,30 @@ impl RenderingServer {
             .base_shader
             .get_unif_loc(c"u_texture".as_ptr());
 
+        // ui shader
         self.ui_proj_loc = resource_manager
             .ui_shader
             .get_unif_loc(c"u_projection".as_ptr());
         self.ui_tex_loc = resource_manager
             .base_shader
             .get_unif_loc(c"u_texture".as_ptr());
+
+        // chunk shader
+        self.chunk_model_loc = resource_manager
+            .chunk_shader
+            .get_unif_loc(c"u_model".as_ptr());
+        self.chunk_view_loc = resource_manager
+            .chunk_shader
+            .get_unif_loc(c"u_view".as_ptr());
+        self.chunk_proj_loc = resource_manager
+            .chunk_shader
+            .get_unif_loc(c"u_projection".as_ptr());
+        self.chunk_tex_loc = resource_manager
+            .chunk_shader
+            .get_unif_loc(c"u_texture".as_ptr());
+        self.chunk_fade_loc = resource_manager
+            .chunk_shader
+            .get_unif_loc(c"u_fade".as_ptr());
     }
 
     pub fn render(
@@ -165,28 +198,30 @@ impl RenderingServer {
     ) {
         // TODO: create player character that stores player position and move camera into RenderingServer
         // TODO: fix horrible parameter bloat
+        resource_manager.chunk_shader.bind();
+        
         unsafe {
             //gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
             //gl::UseProgram(resource_manager.base_shader);
 
             resource_manager.tile_atlas.bind(0);
             gl::UniformMatrix4fv(
-                self.base_view_loc,
+                self.chunk_view_loc,
                 1,
                 gl::FALSE,
                 camera.view.to_cols_array().as_ptr(),
             );
             gl::UniformMatrix4fv(
-                self.base_proj_loc,
+                self.chunk_proj_loc,
                 1,
                 gl::FALSE,
                 camera.projection.to_cols_array().as_ptr(),
             );
 
-            gl::Uniform1i(self.base_tex_loc, 0);
+            gl::Uniform1i(self.chunk_tex_loc, 0);
 
             if let Some(world) = world {
-                rendering::chunk_renderer::render_chunks(world, self.base_model_loc);
+                rendering::chunk_renderer::render_chunks(world, self.chunk_model_loc, self.chunk_fade_loc);
             }
 
             gl::Disable(gl::DEPTH_TEST);

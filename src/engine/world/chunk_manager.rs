@@ -1,12 +1,13 @@
 use std::{collections::HashMap, sync::mpsc::TryRecvError};
 
-use crate::engine::{blocks::{block::Block, block_model::BlockModel}, core::worker::Worker, rendering::{chunk_mesher, chunk_renderer}, world::{chunk::Chunk, chunk_manager::ChunkState::{Available, InWork}, chunk_region::ChunkRegion, chunk_state::{ChunkState, GenerationStep}, generation::{self, terrain_generator::{TerrainGenerator, Worldtype}}, voxel_coordinates::*, world::RENDER_DISTANCE}};
+use crate::engine::{blocks::{block::Block, block_model::{self, BlockModel}}, core::worker::Worker, rendering::{chunk_mesher, chunk_renderer::{self, upload_chunk_mesh}}, util::utility::inside_circle, world::{chunk::{CHUNK_WIDTH, Chunk}, chunk_manager::ChunkState::{Available, InWork}, chunk_region::ChunkRegion, chunk_state::{ChunkState, GenerationStep}, generation::{self, terrain_generator::{TerrainGenerator, Worldtype}}, voxel_coordinates::*, world::RENDER_DISTANCE}};
 
 
 /// Instanced once per loaded dimension
 pub struct ChunkManager {
-    chunks: HashMap<ChunkCoord, ChunkState>,
+    pub chunks: HashMap<ChunkCoord, ChunkState>,
     generating_chunks: Vec<GeneratingChunk>, // receivers of generating chunks that are being edited by a thread
+    generating_chunk_regions: Vec<GeneratingChunkRegion>,
     meshed_chunks: Vec<MeshedChunk>,
     pub dirty_chunks: Vec<ChunkCoord>,
     freed_chunks: Vec<Chunk>, // the chunk will move into this queue on deletion and save to disk before being destroyed
@@ -17,6 +18,11 @@ pub struct ChunkManager {
 pub struct GeneratingChunk {
     pub coord: ChunkCoord,
     pub receiver: std::sync::mpsc::Receiver<Chunk>,
+}
+
+pub struct GeneratingChunkRegion {
+    pub coord: ChunkCoord,
+    pub receiver: std::sync::mpsc::Receiver<(Chunk, ChunkRegion)>,
 }
 
 pub struct MeshedChunk {
@@ -37,6 +43,7 @@ impl ChunkManager {
         Self {
             chunks: HashMap::new(),
             generating_chunks: Vec::new(),
+            generating_chunk_regions: Vec::new(),
             meshed_chunks: Vec::new(),
             dirty_chunks: Vec::new(),
             freed_chunks: Vec::new(),
@@ -47,25 +54,51 @@ impl ChunkManager {
 
     pub fn load_chunks_in_radius(
         &mut self,
-        x: i32,
-        z: i32,
+        bx: i32,
+        bz: i32,
         radius: u32,
         worker: &Worker,
         block_models: &Vec<BlockModel>,
         /*loaders: Vec<&ChunkLoader>*/
     ) {
+        let sx: i32 = bx.div_euclid(CHUNK_WIDTH);
+        let sz: i32 = bz.div_euclid(CHUNK_WIDTH);
+        let mut x = sx;
+        let mut z = sz;
+        let mut dir = 0;
+        let mut step = 0;
+        let mut step_len = 1;
+        let mut turns_at = 0;
+        let diam = radius * 2;
 
-        let c = ChunkCoord::from_block_coord(&BlockCoord::new(x, z));
-        let cx = c.x;
-        let cz = c.z;
-        let r = radius as i32;
-
-        for x in cx-r..cx+r {
-            for z in cz-r..cz+r {
+        for i in 0..diam*diam {
+            
+            if inside_circle(x-sx, z-sz, radius as i32) {
                 let coord = ChunkCoord::new(x, z);
+                
+                if self.chunks.get(&coord).is_none() {
+                    self.generate_chunk(x, z, block_models, worker);
+                }
+            }
 
-                if self.chunks.get(&coord).is_some() {continue;}
-                self.generate_chunk(coord.x, coord.z, block_models, worker);
+            match dir {
+                0 => x += 1, // right
+                1 => z += 1, // up
+                2 => x -= 1, // left
+                3 => z -= 1, // down
+                _ => {}
+            }
+
+            step += 1;
+
+            if step >= step_len {
+                step = 0;
+                dir = (dir + 1) % 4;
+                turns_at += 1;
+                if turns_at >= 2 {
+                    turns_at = 0;
+                    step_len += 1;
+                }
             }
         }
     }
@@ -77,13 +110,14 @@ impl ChunkManager {
         // the old chunk while generating until replacing it
         // with the new version
         self.chunks.insert(ChunkCoord::new(cx, cz), ChunkState::InWork(GenerationStep::Empty));
+        println!("generating chunks vec len: {}", self.generating_chunks.len());
 
         self.chunks_generating += 1;
         let receiver = worker.execute(move || {
             let chunk_generator = TerrainGenerator::new(12345, Worldtype::DEFAULT);
             let mut chunk = Chunk::new(cx, cz);
 
-            chunk_generator.generate_chunk_terrain(&mut chunk, 15); // POSSIBLE BUG FIX LATER
+            chunk_generator.generate_terrain(&mut chunk, 15); // POSSIBLE BUG FIX LATER
 
             chunk
         });
@@ -160,9 +194,99 @@ impl ChunkManager {
                 Err(TryRecvError::Disconnected) => { /* inactive / panicked */ }
             }
         }
+
+        for i in 0..self.meshed_chunks.len() {
+            
+            if i >= self.meshed_chunks.len() {
+                break;
+            };
+
+            
+            match self.meshed_chunks[i].receiver.try_recv() {
+                Ok(mut mesh) => {
+                    let coord = self.meshed_chunks[i].coord;
+                    if let Some(chunk) = self.get_avl_chunk_mut(coord.x, coord.z) {
+                        upload_chunk_mesh(chunk, mesh);
+                    }   
+                }
+                Err(TryRecvError::Empty) => { /* chunk still generating */ }
+                Err(TryRecvError::Disconnected) => { /* inactive / panicked */ }
+            }
+        }
+
+        for i in 0..self.generating_chunk_regions.len() {
+            
+            if i >= self.generating_chunk_regions.len() {
+                break;
+            };
+
+            match self.generating_chunk_regions[i].receiver.try_recv() {
+                Ok(mut value) => {
+                    let mut chunk = value.0;
+                    let mut region = value.1;
+
+                    let coord = chunk.coord;
+                    let gen_step = chunk.generation_step();
+
+
+                    if gen_step == GenerationStep::Complete {
+                        self.chunks_loaded += 1;
+                        self.chunks_generating -= 1;
+                        chunk.set_dirty(true);
+                        self.dirty_chunks.push(coord);
+                    }
+
+                    self.chunks.insert(coord, Available(chunk));
+                    ChunkRegion::insert_chunk_region(self, &coord, region);
+                    
+                }
+                Err(TryRecvError::Empty) => { /* chunk still generating */ }
+                Err(TryRecvError::Disconnected) => { /* inactive / panicked */ }
+            }
+        }
+
+        let mut cr: Vec<ChunkCoord> = Vec::new();
+
+        for (key, val) in &self.chunks {
+            match val {
+                ChunkState::Available(chunk) => {
+                    if chunk.generation_step() == GenerationStep::Terrain {
+                        cr.push(chunk.coord);
+                    }
+                }
+                ChunkState::InWork(step) => {}
+            }
+        }
+
+        for coord in cr {
+                        
+            let region = ChunkRegion::take_chunk_region(self, &coord);
+            if region.is_none() {
+                continue;
+            }
+            
+            let mut region = region.unwrap();
+            // region already checks if center chunk is available
+            let mut chunk = self.take_avl_chunk(coord.x, coord.z).unwrap();
+
+            let receiver = worker.execute(move || {
+                TerrainGenerator::generate_structure(&mut chunk, &mut region);
+                chunk.set_generation_step(GenerationStep::Complete);
+
+                (chunk, region)
+            });
+
+            self.generating_chunk_regions.push(
+                GeneratingChunkRegion {
+                    coord: coord.clone(),
+                    receiver,
+                }
+            );
+        }
+
     }
 
-    pub fn update_dirty_chunks(&mut self, block_models: &Vec<BlockModel>) {
+    pub fn update_dirty_chunks<'a>(&mut self, block_models: &Vec<BlockModel>, worker: &Worker) {
 
         let mut dirt: Vec<ChunkCoord> = Vec::new();
 
@@ -174,13 +298,40 @@ impl ChunkManager {
             if let Some(region) = ChunkRegion::copy_chunk_region(self, &coord) {
                 if let Some(chunk) = self.get_avl_chunk_mut(coord.x, coord.z) {
                     chunk.set_dirty(false);
-                    let mesh = chunk_mesher::build_mesh(
+
+                    
+                    /*let mesh = chunk_mesher::build_mesh(
                         chunk,
                         &region,
                         block_models,
-                    );
+                    );*/
+                    //chunk_renderer::upload_chunk_mesh(chunk, mesh);
+                        
 
-                    chunk_renderer::upload_chunk_mesh(chunk, mesh);
+                        // chunk mesh should store creation time to skip mesh
+                        // if newer version is already used
+                        //self.meshing_chunks += 1;
+                    let coord = ChunkCoord::new(chunk.coord.x, chunk.coord.z);
+                    let chunk_clone = chunk.clone();
+                    let block_models_clone = block_models.clone();
+                    
+                    let receiver = worker.execute(move || {
+
+                        let mesh = chunk_mesher::build_mesh(
+                            &chunk_clone,
+                            &region,
+                            &block_models_clone, //TODO: replace clone with arc later
+                        );
+
+                        mesh
+                    });
+
+                    self.meshed_chunks.push(
+                        MeshedChunk {
+                            coord,
+                            receiver,
+                        }
+                    );
 
                 } else {dirt.push(coord);}
             } else {dirt.push(coord);}
@@ -214,6 +365,17 @@ impl ChunkManager {
         self.chunks.get_mut(&ChunkCoord::new(cx, cz))
     }
 
+    pub fn take_avl_chunk(&mut self, cx: i32, cz: i32) -> Option<Chunk> {
+        if !self.chunk_avail(cx, cz) {return None;}
+        if let Some(state) = self.chunks.insert(ChunkCoord::new(cx, cz), ChunkState::InWork(GenerationStep::Empty)) {
+            match state {
+                Available(chunk) => {return Some(chunk);}
+                InWork(_) => {return None;}
+            }
+        }
+        None
+    }
+
     pub fn get_avl_chunk_ref(&self, cx: i32, cz: i32) -> Option<&Chunk> {
         if let Some(state) = self.chunks.get(&ChunkCoord::new(cx, cz)) {
             match state {
@@ -238,6 +400,22 @@ impl ChunkManager {
         self.chunks.insert(ChunkCoord::new(cx, cz), ChunkState::Available(chunk)).is_some()
     }
 
+    /// Checks if the chunk is complete and available
+    pub fn chunk_avail(&self, cx: i32, cz: i32) -> bool {
+        if let Some(state) = self.chunks.get(&ChunkCoord::new(cx, cz)) {
+            match state {
+                Available(chunk) => {
+                    /*if matches!(chunk.generation_step(), GenerationStep::Complete) {
+                        return true;
+                    }*/
+                    return true;
+                }
+                InWork(_) => {return false;}
+            }
+        }
+        false
+    }
+    // If Generation Step complete
     pub fn clone_chunk(&self, cx: i32, cz: i32) -> Option<Chunk> {
         if let Some(state) = self.chunks.get(&ChunkCoord::new(cx, cz)) {
             match state {
@@ -251,5 +429,20 @@ impl ChunkManager {
             }
         }
         None
+    }
+
+    pub fn complete_chunk_avail(&self, cx: i32, cz: i32) -> bool {
+        if let Some(state) = self.chunks.get(&ChunkCoord::new(cx, cz)) {
+            match state {
+                Available(chunk) => {
+                    if matches!(chunk.generation_step(), GenerationStep::Complete) {
+                        return true;
+                    }
+                    return false;
+                }
+                InWork(_) => {return false;}
+            }
+        }
+        false
     }
 }

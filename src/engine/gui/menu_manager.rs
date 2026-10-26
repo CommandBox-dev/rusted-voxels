@@ -27,6 +27,8 @@ pub enum Menu {
     WorldLoadingScreen,
 }
 
+pub trait UIMenu {}
+
 pub struct MenuManager {
     pub selected_menu: Menu,
     last_menus: Vec<Menu>, // stores what menus where openened in order.
