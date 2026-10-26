@@ -17,6 +17,7 @@ pub struct ResourceManager {
     pub base_shader: Shader,
     pub ui_shader: Shader,
     pub chunk_shader: Shader,
+    pub wireframe_shader: Shader,
 
     pub place_sound: StaticSoundData,
     pub break_sound: StaticSoundData,
@@ -44,6 +45,11 @@ impl ResourceManager {
             chunk_shader: Shader::load_from_file(
                 "./res/shaders/chunk.vert",
                 "./res/shaders/chunk.frag",
+            ),
+
+            wireframe_shader: Shader::load_from_file(
+                "./res/shaders/wireframe.vert",
+                "./res/shaders/wireframe.frag",
             ),
 
             place_sound: StaticSoundData::from_file("./res/audio/place.mp3")
@@ -75,7 +81,7 @@ impl ResourceManager {
         let face = manual.tile_atlas.get_tile(String::from("face"));
         let pillar = manual.tile_atlas.get_tile(String::from("pillar"));
         let leafes = manual.tile_atlas.get_tile(String::from("leafes"));
-        let log = manual.tile_atlas.get_tile(String::from("log"));
+        let log = manual.tile_atlas.get_tile(String::from("bark"));
 
         manual.block_models = vec![
             BlockModel::new_cube(cobblestone),

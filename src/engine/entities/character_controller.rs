@@ -1,6 +1,6 @@
 use std::ops::Add;
 
-use glam::{Vec2, Vec3};
+use glam::{IVec3, Vec2, Vec3};
 use glfw::*;
 
 use crate::engine::audio::audio_server::AudioServer;
@@ -17,6 +17,7 @@ use crate::engine::world::world::World;
 
 pub struct CharacterState {
     pub selected_block: u32,
+    pub target_block: IVec3,
     pub is_on_floor: bool,
     pub velocity: Vec3,
 }
@@ -25,6 +26,7 @@ impl CharacterState {
     pub fn new() -> Self {
         Self {
             selected_block: 16, // 5
+            target_block: IVec3::new(0, 0, 0),
             is_on_floor: false,
             velocity: Vec3::ZERO,
         }
@@ -40,11 +42,12 @@ impl CharacterState {
         audio_manager: &mut AudioServer,
         resource_manager: &ResourceManager,
     ) {
+        let result = raycast::cast_ray(camera.position, camera.front, 6.0, &mut world);
+        self.target_block = result.hit_position;
         // breaking
         if menu_manager.selected_menu == Menu::Closed
             && input.is_mouse_button_pressed(MouseButton::Left as i32)
         {
-            let result = raycast::cast_ray(camera.position, camera.front, 15.0, &mut world);
             if result.hit {
                 world.set_block(
                     result.hit_position.x,
@@ -60,7 +63,6 @@ impl CharacterState {
         if menu_manager.selected_menu == Menu::Closed
             && input.is_mouse_button_pressed(MouseButton::Right as i32)
         {
-            let result = raycast::cast_ray(camera.position, camera.front, 15.0, &mut world);
             if result.hit {
                 world.set_block(
                     result.hit_position.x + result.hit_normal.x,
@@ -76,7 +78,6 @@ impl CharacterState {
         if menu_manager.selected_menu == Menu::Closed
             && input.is_mouse_button_pressed(MouseButton::Middle as i32)
         {
-            let result = raycast::cast_ray(camera.position, camera.front, 15.0, &mut world);
             if result.hit {
                 self.selected_block = result.hit_block;
             }
@@ -84,7 +85,6 @@ impl CharacterState {
 
         // structure placement
         if menu_manager.selected_menu == Menu::Closed && input.is_pressed(Key::P as i32) {
-            let result = raycast::cast_ray(camera.position, camera.front, 15.0, &mut world);
             if result.hit {
                 let hit = result.hit_position.clone().add(result.hit_normal);
                 world.generate_maze(hit.x, hit.y, hit.z);
@@ -121,7 +121,7 @@ impl CharacterState {
         }
 
         if menu_manager.selected_menu == Menu::Closed && input.is_down(Key::Space as i32) {
-            self.velocity.y = 0.8; // 0.1
+            self.velocity.y = 0.1; // 0.1
         } else {
             self.velocity.y += (-9.8 * 0.045 * window.delta);
         }

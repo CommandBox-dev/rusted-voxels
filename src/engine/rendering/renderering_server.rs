@@ -1,19 +1,16 @@
-use glam::Mat4;
+use std::ops::Add;
+
+use glam::{Mat4, Vec3};
 use glfw::MouseButton;
 
 use crate::engine::{
-    core::{input::Input, window::GameWindow},
-    entities::character_controller::CharacterState,
-    gui::{
+    blocks::block_model::BlockModel, core::{input::Input, window::GameWindow}, entities::character_controller::CharacterState, gui::{
         basic_ui::{UIButton, UICheckBox, UIElement, UILabel},
         menu_manager::{self, Menu, MenuManager},
-    },
-    rendering::{self, camera::Camera},
-    resources::{
+    }, rendering::{self, camera::Camera, chunk_mesher}, resources::{
         resource_manager::{self, ResourceManager},
         texture::*,
-    },
-    world::world::World,
+    }, world::world::World,
 };
 
 pub fn upload_crosshair(tile: &AtlasTile, window: &GameWindow) -> (u32, u32) {
@@ -118,6 +115,13 @@ pub struct RenderingServer {
     chunk_proj_loc: i32,
     chunk_tex_loc: i32,
     chunk_fade_loc: i32,
+    // wireframe shader
+    wire_face_color_loc: i32,
+    wire_line_color_loc: i32,
+    wire_line_width_loc: i32,
+    wire_model_loc: i32,
+    wire_view_loc: i32,
+    wire_proj_loc: i32,
 }
 
 impl RenderingServer {
@@ -137,6 +141,13 @@ impl RenderingServer {
             chunk_proj_loc: 0,
             chunk_tex_loc: 0,
             chunk_fade_loc: 0,
+
+            wire_face_color_loc: 0,
+            wire_line_color_loc: 0,
+            wire_line_width_loc: 0,
+            wire_model_loc: 0,
+            wire_view_loc: 0,
+            wire_proj_loc: 0,
         }
     }
 
@@ -180,6 +191,26 @@ impl RenderingServer {
         self.chunk_fade_loc = resource_manager
             .chunk_shader
             .get_unif_loc(c"u_fade".as_ptr());
+
+        // wireframe shader
+        self.wire_line_color_loc = resource_manager
+            .wireframe_shader
+            .get_unif_loc(c"u_line_color".as_ptr());
+        self.wire_face_color_loc = resource_manager
+            .wireframe_shader
+            .get_unif_loc(c"u_face_color".as_ptr());
+        self.wire_line_width_loc = resource_manager
+            .wireframe_shader
+            .get_unif_loc(c"u_line_width".as_ptr());
+        self.wire_model_loc = resource_manager
+            .wireframe_shader
+            .get_unif_loc(c"u_model".as_ptr());
+        self.wire_view_loc = resource_manager
+            .wireframe_shader
+            .get_unif_loc(c"u_view".as_ptr());
+        self.wire_proj_loc = resource_manager
+            .wireframe_shader
+            .get_unif_loc(c"u_projection".as_ptr());
     }
 
     pub fn render(
@@ -195,6 +226,7 @@ impl RenderingServer {
         chat_label: &UILabel,
         loaded_label: &UILabel,
         menu_manager: &MenuManager,
+        vao_debug: u32,
     ) {
         // TODO: create player character that stores player position and move camera into RenderingServer
         // TODO: fix horrible parameter bloat
@@ -245,7 +277,31 @@ impl RenderingServer {
             label.draw();
             chat_label.draw();
             loaded_label.draw();
+
             gl::Enable(gl::DEPTH_TEST);
+
+            //gl::Disable(gl::CULL_FACE);
+            let target_pos = character_controller.target_block.clone();
+
+            let mut target_pos = Vec3::new(target_pos.x as f32, target_pos.y as f32, target_pos.z as f32);
+            target_pos -= Vec3::splat(0.005);
+            let mut model = Mat4::from_translation(target_pos);
+            model *= Mat4::from_scale(Vec3::splat(1.02));
+            gl::BindVertexArray(vao_debug);
+            resource_manager.wireframe_shader.bind();
+
+            gl::Uniform4f(self.wire_line_color_loc, 0.0, 0.0, 0.0, 1.0);
+            gl::Uniform4f(self.wire_face_color_loc, 1.0, 1.0, 1.0, 0.15);
+            gl::Uniform1f(self.wire_line_width_loc, 0.02);
+
+            gl::UniformMatrix4fv(self.wire_model_loc, 1, gl::FALSE, model.to_cols_array().as_ptr());
+            gl::UniformMatrix4fv(self.wire_view_loc, 1, gl::FALSE, camera.view.to_cols_array().as_ptr());
+            gl::UniformMatrix4fv(self.wire_proj_loc, 1, gl::FALSE, camera.projection.to_cols_array().as_ptr());
+
+            gl::DrawArrays(gl::TRIANGLES, 0, crate::VERTICES.len() as i32);
+
+
+            //gl::Enable(gl::CULL_FACE);
         }
     }
 }

@@ -36,6 +36,7 @@ use crate::engine::physics::aabb::*;
 use crate::engine::physics::aabb::*;
 use crate::engine::physics::*;
 use crate::engine::rendering::camera::*;
+use crate::engine::rendering::chunk_mesher;
 use crate::engine::rendering::renderering_server::RenderingServer;
 use crate::engine::rendering::renderering_server::render_crosshair;
 use crate::engine::rendering::renderering_server::upload_crosshair;
@@ -47,6 +48,62 @@ use crate::engine::world::chunk_manager::ChunkLoader;
 use crate::engine::world::voxel_coordinates::BlockCoord;
 use crate::engine::world::world::*;
 use crate::engine::*;
+
+pub const VERTICES: [f32; 108 + 72] = [
+    // right
+    1.0, 0.0, 1.0, 1.0, 0.0,
+    1.0, 0.0, 0.0, 0.0, 0.0,
+    1.0, 1.0, 0.0, 0.0, 1.0,
+
+    1.0, 0.0, 1.0, 1.0, 0.0,
+    1.0, 1.0, 0.0, 0.0, 1.0,
+    1.0, 1.0, 1.0, 1.0, 1.0,
+
+    // left
+    0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 1.0, 0.0,
+    0.0, 1.0, 1.0, 1.0, 1.0,
+
+    0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 1.0, 1.0, 1.0,
+    0.0, 1.0, 0.0, 0.0, 1.0,
+
+    // top
+    0.0, 1.0, 1.0, 0.0, 0.0,
+    1.0, 1.0, 1.0, 1.0, 0.0,
+    1.0, 1.0, 0.0, 1.0, 1.0,
+
+    0.0, 1.0, 1.0, 0.0, 0.0,
+    1.0, 1.0, 0.0, 1.0, 1.0,
+    0.0, 1.0, 0.0, 0.0, 1.0,
+
+    // bottom
+    0.0, 0.0, 0.0, 0.0, 0.0,
+    1.0, 0.0, 0.0, 1.0, 0.0,
+    1.0, 0.0, 1.0, 1.0, 1.0,
+
+    0.0, 0.0, 0.0, 0.0, 0.0,
+    1.0, 0.0, 1.0, 1.0, 1.0,
+    0.0, 0.0, 1.0, 0.0, 1.0,
+
+    // front
+    0.0, 0.0, 1.0, 0.0, 0.0,
+    1.0, 0.0, 1.0, 1.0, 0.0,
+    1.0, 1.0, 1.0, 1.0, 1.0,
+
+    0.0, 0.0, 1.0, 0.0, 0.0,
+    1.0, 1.0, 1.0, 1.0, 1.0,
+    0.0, 1.0, 1.0, 0.0, 1.0,
+
+    // back
+    1.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 1.0, 0.0,
+    0.0, 1.0, 0.0, 1.0, 1.0,
+
+    1.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0, 1.0, 1.0,
+    1.0, 1.0, 0.0, 0.0, 1.0,
+];
 
 fn main() {
     let mut window = GameWindow::new("rusted-voxels", 1920, 1080);
@@ -90,6 +147,49 @@ fn main() {
     let mut loaded_label = UILabel::new(10, 100, "Chunks Loaded: _", AnchorTopLeft, &window_transform);
 
     //audio_manager.play_sound_flat(resource_manager.white_grass_music.clone());
+
+
+    let mut vao_wireframe = 0;
+    let mut vbo_wireframe = 0;
+    let float_size = std::mem::size_of::<f32>();
+    let mesh_byte_size = (crate::VERTICES.len() as usize * float_size) as isize;
+
+    let stride = 5 * float_size as i32;
+
+    unsafe {
+
+        gl::GenVertexArrays(1, &mut vao_wireframe);
+        gl::GenBuffers(1, &mut vbo_wireframe);
+
+        gl::BindVertexArray(vao_wireframe);
+        gl::BindBuffer(gl::ARRAY_BUFFER, vbo_wireframe);
+
+        gl::BufferData(
+            gl::ARRAY_BUFFER,
+            mesh_byte_size,
+            VERTICES.as_ptr() as *const _,
+            gl::STATIC_DRAW,
+        );
+
+        // position
+        gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, stride, std::ptr::null());
+        gl::EnableVertexAttribArray(0);
+        // uv
+        gl::VertexAttribPointer(
+            1,
+            2,
+            gl::FLOAT,
+            gl::FALSE,
+            stride,
+            (3 * float_size) as *const _,
+        );
+        gl::EnableVertexAttribArray(1);
+
+        gl::BindVertexArray(0);
+    }
+
+
+
 
     'game_loop: while !window.should_close() {
         window.poll_events(&mut input, &mut camera);
@@ -167,6 +267,7 @@ fn main() {
             &chat_label,
             &loaded_label,
             &menu_manager,
+            vao_wireframe,
         );
 
         window.swap_buffers();

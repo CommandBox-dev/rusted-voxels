@@ -19,15 +19,19 @@ impl Structure for OakTree {
         let w = 1;
         let h = random_range(5..10);
 
-        for x in lx..lx+w {
-            for z in lz..lz+w {
+        for x in lx-w..lx+w {
+            for z in lz-w..lz+w {
                 for y in top..top+h {
                     chunk.set_block_global(region, x, y as i32, z, 16);
                 }
             }
         }
 
-        oak_tree::fill_sphere(lx, (top + h) as i32, lz, 3, vec![17], chunk, region);
+        for i in 1..random_range(3..5) {
+            chunk.set_block_global(region, lx-1+random_range(0..=2), top as i32, lz-1+random_range(0..=2), 16);
+        }
+
+        oak_tree::fill_sphere(lx, (top + h) as i32, lz, 4, vec![17], chunk, region);
     }
 
 }

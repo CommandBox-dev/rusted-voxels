@@ -51,6 +51,17 @@ pub fn build_mesh(chunk: &Chunk, region: &ChunkRegion, block_models: &Vec<BlockM
 
                 for face in 0..6 {
                     if mask & (1 << face) != 0 {
+
+                        let l = match face {
+                            0 => {chunk.get_light_global(region, x + 1, y, z)}
+                            1 => {chunk.get_light_global(region, x - 1, y, z)}
+                            2 => {chunk.get_light_global(region, x, y + 1, z)}
+                            3 => {chunk.get_light_global(region, x, y - 1, z)}
+                            4 => {chunk.get_light_global(region, x, y, z + 1)}
+                            5 => {chunk.get_light_global(region, x, y, z - 1)}
+                            _ => {0}
+                        };
+
                         add_face(
                             &mut mesh,
                             face,
@@ -60,6 +71,7 @@ pub fn build_mesh(chunk: &Chunk, region: &ChunkRegion, block_models: &Vec<BlockM
                             block,
                             &block_models,
                             get_ambient_occlusion(chunk, region, x, y, z, face),
+                            l,
                         );
                     }
                 }
@@ -103,6 +115,7 @@ fn add_face(
     block: u32,
     block_models: &Vec<BlockModel>,
     ao: (u32, u32, u32, u32),
+    l: u32,
 ) {
     let start = 6 * face; // 6 vertices (two triangles) * face index
     let b = block as usize - 1;
@@ -112,13 +125,15 @@ fn add_face(
     let ao3 = AO_CURVE[ao.2 as usize];
     let ao4 = AO_CURVE[ao.3 as usize];
 
+    let l = l as f32 / 15.0;
+
     // to disable ao
     /*let ao1 = 1.0;
     let ao2 = 1.0;
     let ao3 = 1.0;
     let ao4 = 1.0;*/
 
-    let nl = NORMAL_LIGHT[face as usize];
+    let nl = NORMAL_LIGHT[face as usize] * l;
 
     let uvo = (face * 4) as usize;
 

@@ -24,6 +24,7 @@ pub struct Chunk {
     dirty: bool,
 
     pub blocktype_data: Box<[u32; CHUNK_VOLUME as usize]>,
+    pub light_data: Box<[u32; CHUNK_VOLUME as usize]>,
 
     pub uptime: u32,
 
@@ -39,9 +40,9 @@ impl Chunk {
     }
 
     pub fn new(cx: i32, cz: i32) -> Self {
+
         let coord = ChunkCoord::new(cx, cz);
         let block_coord = BlockCoord::from_chunk_coord(&coord);
-        let mut blocktype_data = Box::new([0; CHUNK_VOLUME as usize]);
 
         Self {
             coord,
@@ -49,7 +50,8 @@ impl Chunk {
             gen_step: GenerationStep::Empty,
             dirty: false,
 
-            blocktype_data,
+            blocktype_data: Box::new([0; CHUNK_VOLUME as usize]),
+            light_data: Box::new([8; CHUNK_VOLUME as usize]),
 
             uptime: 0,
 
@@ -58,6 +60,7 @@ impl Chunk {
             vertex_count: 0,
         }
     }
+
 
     #[inline]
     pub fn is_dirty(&self) -> bool {
@@ -77,29 +80,59 @@ impl Chunk {
         self.gen_step = step;
     }
 
+
     pub fn get_block(&self, lx: i32, ly: i32, lz: i32) -> u32 {
         if lx < 0
-            || lx >= CHUNK_WIDTH
-            || lz < 0
-            || lz >= CHUNK_WIDTH
-            || ly < 0
-            || ly >= CHUNK_HEIGHT
+        || ly < 0
+        || lz < 0
+        || lx >= CHUNK_WIDTH
+        || ly >= CHUNK_HEIGHT
+        || lz >= CHUNK_WIDTH
         {
             return 0;
         }
 
-        self.blocktype_data[Chunk::voxel_index(lx, ly, lz)]
+        let index = Chunk::voxel_index(lx, ly, lz);
+
+        self.blocktype_data[index]
     }
 
-    pub fn set_block(&mut self, x: i32, y: i32, z: i32, block: u32) {
-        if x < 0 || x >= CHUNK_WIDTH || z < 0 || z >= CHUNK_WIDTH || y < 0 || y >= CHUNK_HEIGHT {
+    pub fn set_block(&mut self, lx: i32, ly: i32, lz: i32, block: u32) {
+        if lx < 0
+        || ly < 0
+        || lz < 0
+        || lx >= CHUNK_WIDTH
+        || ly >= CHUNK_HEIGHT 
+        || lz >= CHUNK_WIDTH
+        {
             return;
         }
 
-        self.blocktype_data[Chunk::voxel_index(x, y, z)] = block;
+        let index = Chunk::voxel_index(lx, ly, lz);
+
+        self.blocktype_data[index] = block;
+    }
+    /// Replaces block and returns the replaced block
+    pub fn insert_block(&mut self, lx: i32, ly: i32, lz: i32, block: u32) -> u32 {
+        if lx < 0
+        || ly < 0
+        || lz < 0
+        || lx >= CHUNK_WIDTH
+        || ly >= CHUNK_HEIGHT
+        || lz >= CHUNK_WIDTH
+        {
+            return u32::MAX;
+        }
+
+        let index = Chunk::voxel_index(lx, ly, lz);
+
+        let replaced_block = self.blocktype_data[index];
+        self.blocktype_data[index] = block;
+
+        replaced_block
     }
 
-    /// returns the block of the adjacent chunk if the position is outside chunk bounds
+    /// Returns the block of the adjacent chunk if the position is outside chunk bounds
     // TODO: rename top chunk to up chunk
     pub fn get_block_global(&self, region: &ChunkRegion, lx: i32, ly: i32, lz: i32) -> u32 {
         if ly < 0 || ly >= CHUNK_HEIGHT {
@@ -183,21 +216,6 @@ impl Chunk {
         self.set_block(lx, ly, lz, block)
     }
 
-    /// replaces block and returns the replaced block
-    pub fn insert_block(&mut self, lx: i32, ly: i32, lz: i32, block: u32) -> u32 {
-
-        if lx < 0 || lx >= CHUNK_WIDTH || lz < 0 || lz >= CHUNK_WIDTH || ly < 0 || ly >= CHUNK_HEIGHT {
-            return u32::MAX;
-        }
-
-        let index = Chunk::voxel_index(lx, ly, lz);
-
-        let replaced_block = self.blocktype_data[index];
-        self.blocktype_data[index] = block;
-
-        replaced_block
-    }
-
     /// Returns the top block on that coordinate and the height
     /// or AIR and 0 if there is only air.
     pub fn get_top_block(&self, lx: i32, lz: i32) -> (u32, u32) {
@@ -213,5 +231,80 @@ impl Chunk {
         }
 
         (0, 0)
+    }
+
+
+    pub fn get_light(&self, lx: i32, ly: i32, lz: i32) -> u32 {
+        if lx < 0
+        || ly < 0
+        || lz < 0
+        || lx >= CHUNK_WIDTH
+        || ly >= CHUNK_HEIGHT
+        || lz >= CHUNK_WIDTH
+        {
+            return 0;
+        }
+
+        let index = Chunk::voxel_index(lx, ly, lz);
+
+        self.light_data[index]
+    }
+
+    pub fn set_light(&mut self, lx: i32, ly: i32, lz: i32, light: u32) {
+        if lx < 0
+        || ly < 0
+        || lz < 0
+        || lx >= CHUNK_WIDTH
+        || ly >= CHUNK_HEIGHT
+        || lz >= CHUNK_WIDTH
+        {
+            return;
+        }
+
+        let index = Chunk::voxel_index(lx, ly, lz);
+
+        self.light_data[index] = light;
+    }
+
+
+    pub fn get_light_global(&self, region: &ChunkRegion, lx: i32, ly: i32, lz: i32) -> u32 {
+        if ly < 0 || ly >= CHUNK_HEIGHT {
+            return 0;
+        }
+
+        let is_top = lz >= CHUNK_WIDTH;
+        let is_down = lz < 0;
+        let is_right = lx >= CHUNK_WIDTH;
+        let is_left = lx < 0;
+        let is_center_v = !is_top && !is_down;
+        let is_center_h = !is_right && !is_left;
+
+        // block coord outside chunk check
+        if  is_left && is_top {
+            return region.top_left_chunk.get_light(lx+CHUNK_WIDTH, ly, lz-CHUNK_WIDTH);
+        }
+        if is_center_h && is_top {
+            return region.top_chunk.get_light(lx, ly, lz-CHUNK_WIDTH);
+        }
+        if is_right && is_top {
+            return region.top_right_chunk.get_light(lx-CHUNK_WIDTH, ly, lz-CHUNK_WIDTH);
+        }
+        if is_right && is_center_v {
+            return region.right_chunk.get_light(lx-CHUNK_WIDTH, ly, lz);
+        }
+        if is_right && is_down {
+            return region.down_right_chunk.get_light(lx-CHUNK_WIDTH, ly, lz+CHUNK_WIDTH);
+        }
+        if is_center_h && is_down {
+            return region.down_chunk.get_light(lx, ly, lz+CHUNK_WIDTH);
+        }
+        if is_left && is_down {
+            return region.down_left_chunk.get_light(lx+CHUNK_WIDTH, ly, lz+CHUNK_WIDTH);
+        }
+        if is_left && is_center_v {
+            return region.left_chunk.get_light(lx+CHUNK_WIDTH, ly, lz);
+        }
+
+        self.get_light(lx, ly, lz)
     }
 }

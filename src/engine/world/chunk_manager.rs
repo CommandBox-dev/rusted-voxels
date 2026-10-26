@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::mpsc::TryRecvError};
 
 use rand::random_range;
 
-use crate::{engine::{blocks::{block::Block, block_model::{self, BlockModel}}, core::worker::Worker, rendering::{chunk_mesher, chunk_renderer::{self, upload_chunk_mesh}}, util::utility::inside_circle, world::{chunk::{CHUNK_WIDTH, Chunk}, chunk_manager::ChunkState::{Available, InWork}, chunk_region::ChunkRegion, chunk_state::{ChunkState, GenerationStep}, generation::{self, terrain_generator::{TerrainGenerator, Worldtype}}, voxel_coordinates::*, world::RENDER_DISTANCE}}, game::terrain_features::{oak_tree::OakTree, test_structure::TestStruct}};
+use crate::{engine::{blocks::{block::Block, block_model::{self, BlockModel}}, core::worker::Worker, rendering::{chunk_mesher, chunk_renderer::{self, upload_chunk_mesh}}, util::utility::inside_circle, world::{chunk::{CHUNK_WIDTH, Chunk}, chunk_manager::ChunkState::{Available, InWork}, chunk_region::ChunkRegion, chunk_state::{ChunkState, GenerationStep}, generation::{self, terrain_generator::{TerrainGenerator, Worldtype}}, lighting_system, voxel_coordinates::*, world::RENDER_DISTANCE}}, game::terrain_features::{oak_tree::OakTree, test_structure::TestStruct}};
 
 
 /// Instanced once per loaded dimension
@@ -195,7 +195,8 @@ impl ChunkManager {
     }
 
     pub fn update(&mut self, block_models: &Vec<BlockModel>, worker: &Worker) {
-        // TODO: THE GENERATING CHUNKS VECTOR NEVER GETS CLEARED
+        // TODO: MEMORY LEAK: CHUNK RECEIVER VECS NEVER GET CLEARED
+
         for i in 0..self.generating_chunks.len() {
             
             if i >= self.generating_chunks.len() {
@@ -204,37 +205,19 @@ impl ChunkManager {
 
             match self.generating_chunks[i].receiver.try_recv() {
                 Ok(mut chunk) => {
+
                     let coord = chunk.coord;
                     let gen_step = chunk.generation_step();
+
                     if gen_step == GenerationStep::Complete {
                         self.chunks_loaded += 1;
                         self.chunks_generating -= 1;
                         chunk.set_dirty(true);
                         self.dirty_chunks.push(coord);
                     }
+
                     self.chunks.insert(coord, Available(chunk));
                     
-                }
-                Err(TryRecvError::Empty) => { /* chunk still generating */ }
-                Err(TryRecvError::Disconnected) => { /* inactive / panicked */ }
-            }
-        }
-
-        self.update_freeing_queue();
-
-        for i in 0..self.meshed_chunks.len() {
-            
-            if i >= self.meshed_chunks.len() {
-                break;
-            };
-
-            
-            match self.meshed_chunks[i].receiver.try_recv() {
-                Ok(mut mesh) => {
-                    let coord = self.meshed_chunks[i].coord;
-                    if let Some(chunk) = self.get_avl_chunk_mut(coord.x, coord.z) {
-                        upload_chunk_mesh(chunk, mesh);
-                    }   
                 }
                 Err(TryRecvError::Empty) => { /* chunk still generating */ }
                 Err(TryRecvError::Disconnected) => { /* inactive / panicked */ }
@@ -249,13 +232,13 @@ impl ChunkManager {
 
             match self.generating_chunk_regions[i].receiver.try_recv() {
                 Ok(mut value) => {
+
                     let mut chunk = value.0;
                     let mut region = value.1;
 
                     let coord = chunk.coord;
                     let gen_step = chunk.generation_step();
-
-
+                    
                     if gen_step == GenerationStep::Complete {
                         self.chunks_loaded += 1;
                         self.chunks_generating -= 1;
@@ -272,35 +255,68 @@ impl ChunkManager {
             }
         }
 
-        let mut cr: Vec<ChunkCoord> = Vec::new();
+        for i in 0..self.meshed_chunks.len() {
+            
+            if i >= self.meshed_chunks.len() {
+                break;
+            };
+
+            match self.meshed_chunks[i].receiver.try_recv() {
+                Ok(mut mesh) => {
+
+                    let coord = self.meshed_chunks[i].coord;
+
+                    if let Some(chunk) = self.get_avl_chunk_mut(coord.x, coord.z) {
+                        upload_chunk_mesh(chunk, mesh);
+                    }   
+                }
+                Err(TryRecvError::Empty) => { /* chunk still generating */ }
+                Err(TryRecvError::Disconnected) => { /* inactive / panicked */ }
+            }
+        }
+
+
+        let mut feature_ready_chunks: Vec<ChunkCoord> = Vec::new();
+        let mut direct_light_ready_chunks: Vec<ChunkCoord> = Vec::new();
+        let mut indirect_light_ready_chunks: Vec<ChunkCoord> = Vec::new();
 
         for (key, val) in &self.chunks {
             match val {
+
                 ChunkState::Available(chunk) => {
-                    if chunk.generation_step() == GenerationStep::Terrain {
-                        cr.push(chunk.coord);
+
+                    match chunk.generation_step() {
+
+                        GenerationStep::DirectLight => {direct_light_ready_chunks.push(chunk.coord);}
+
+                        GenerationStep::Terrain => {feature_ready_chunks.push(chunk.coord);}
+
+                        _ => {}
                     }
                 }
+
                 ChunkState::InWork(step) => {}
             }
         }
 
-        for coord in cr {
+        for coord in feature_ready_chunks {
                         
             let region = ChunkRegion::take_chunk_region(self, &coord);
             if region.is_none() {
                 continue;
             }
             
-            let mut region = region.unwrap();
             // region already checks if center chunk is available
+            let mut region = region.unwrap();
             let mut chunk = self.take_avl_chunk(coord.x, coord.z).unwrap();
 
             let receiver = worker.execute(move || {
+
                 for i in 1..random_range(1..20) {
                     TerrainGenerator::generate_structure(&OakTree {}, &mut chunk, &mut region);
                 }
-                chunk.set_generation_step(GenerationStep::Complete);
+
+                chunk.set_generation_step(GenerationStep::DirectLight);
 
                 (chunk, region)
             });
@@ -313,6 +329,37 @@ impl ChunkManager {
             );
         }
 
+        for coord in direct_light_ready_chunks {
+                        
+            /*let region = ChunkRegion::take_chunk_region(self, &coord);
+            if region.is_none() {
+                continue;
+            }*/
+            
+            // region already checks if center chunk is available
+            //let mut region = region.unwrap();
+            if !self.chunk_avail(coord.x, coord.z) {return;}
+            let mut chunk = self.take_avl_chunk(coord.x, coord.z).unwrap();
+
+            let receiver = worker.execute(move || {
+
+                lighting_system::bake_direct_light(&mut chunk);
+
+                chunk.set_generation_step(GenerationStep::Complete);
+
+                chunk
+            });
+
+            self.generating_chunks.push(
+                GeneratingChunk {
+                    coord: coord.clone(),
+                    receiver,
+                }
+            );
+        }
+
+
+        self.update_freeing_queue();
     }
 
     pub fn update_dirty_chunks<'a>(&mut self, block_models: &Vec<BlockModel>, worker: &Worker) {
