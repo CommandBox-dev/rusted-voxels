@@ -33,6 +33,25 @@ pub const AO_CURVE: [f32; 4] = [
     0.2, 0.5, 0.7, 1.0
 ];
 
+pub const LIGHT_CURVE: [f32; 16] = [
+    0.01,
+    0.02,
+    0.03,
+    0.045,
+    0.06,
+    0.08,
+    0.12,
+    0.15,
+    0.2,
+    0.26,
+    0.30,
+    0.42,
+    0.62,
+    0.75,
+    0.85,
+    0.95,
+];
+
 pub fn build_mesh(chunk: &Chunk, region: &ChunkRegion, block_models: &Vec<BlockModel>) -> Vec<f32> {
     // the passing of the block model
 
@@ -125,7 +144,7 @@ fn add_face(
     let ao3 = AO_CURVE[ao.2 as usize];
     let ao4 = AO_CURVE[ao.3 as usize];
 
-    let l = l as f32 / 15.0;
+    let l = LIGHT_CURVE[l as usize];
 
     // to disable ao
     /*let ao1 = 1.0;

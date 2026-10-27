@@ -171,7 +171,7 @@ impl ChunkManager {
 
     pub fn destroy_chunk(&mut self, chunk: Chunk) {
         chunk_renderer::destroy_chunk_mesh(&chunk);
-        self.chunks_loaded -= 1;
+        if self.chunks_loaded >= 1 {self.chunks_loaded -= 1;}
     }
 
     /// Clears **all** `chunks` without saving them
@@ -287,9 +287,11 @@ impl ChunkManager {
 
                     match chunk.generation_step() {
 
+                        GenerationStep::Terrain => {feature_ready_chunks.push(chunk.coord);}
+                        
                         GenerationStep::DirectLight => {direct_light_ready_chunks.push(chunk.coord);}
 
-                        GenerationStep::Terrain => {feature_ready_chunks.push(chunk.coord);}
+                        GenerationStep::IndirectLight => {indirect_light_ready_chunks.push(chunk.coord);}
 
                         _ => {}
                     }
@@ -312,7 +314,7 @@ impl ChunkManager {
 
             let receiver = worker.execute(move || {
 
-                for i in 1..random_range(1..20) {
+                for i in 1..random_range(10..40) { // 1..20
                     TerrainGenerator::generate_structure(&OakTree {}, &mut chunk, &mut region);
                 }
 
@@ -345,7 +347,7 @@ impl ChunkManager {
 
                 lighting_system::bake_direct_light(&mut chunk);
 
-                chunk.set_generation_step(GenerationStep::Complete);
+                chunk.set_generation_step(GenerationStep::IndirectLight);
 
                 chunk
             });
@@ -358,6 +360,33 @@ impl ChunkManager {
             );
         }
 
+        for coord in indirect_light_ready_chunks {
+                        
+            let region = ChunkRegion::take_chunk_region(self, &coord);
+            if region.is_none() {
+                continue;
+            }
+            
+            // region already checks if center chunk is available
+            let mut region = region.unwrap();
+            let mut chunk = self.take_avl_chunk(coord.x, coord.z).unwrap();
+
+            let receiver = worker.execute(move || {
+
+                lighting_system::bake_indirect_light(&mut chunk, &mut region);
+
+                chunk.set_generation_step(GenerationStep::Complete);
+
+                (chunk, region)
+            });
+
+            self.generating_chunk_regions.push(
+                GeneratingChunkRegion {
+                    coord: coord.clone(),
+                    receiver,
+                }
+            );
+        }
 
         self.update_freeing_queue();
     }

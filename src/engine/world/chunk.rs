@@ -51,7 +51,7 @@ impl Chunk {
             dirty: false,
 
             blocktype_data: Box::new([0; CHUNK_VOLUME as usize]),
-            light_data: Box::new([8; CHUNK_VOLUME as usize]),
+            light_data: Box::new([0; CHUNK_VOLUME as usize]),
 
             uptime: 0,
 
@@ -233,6 +233,43 @@ impl Chunk {
         (0, 0)
     }
 
+    pub fn get_top_block_global(&self, region: &ChunkRegion, lx: i32, lz: i32) -> (u32, u32) {
+
+        let is_top = lz >= CHUNK_WIDTH;
+        let is_down = lz < 0;
+        let is_right = lx >= CHUNK_WIDTH;
+        let is_left = lx < 0;
+        let is_center_v = !is_top && !is_down;
+        let is_center_h = !is_right && !is_left;
+
+        if  is_left && is_top {
+            return region.top_left_chunk.get_top_block(lx+CHUNK_WIDTH, lz-CHUNK_WIDTH);
+        }
+        if is_center_h && is_top {
+            return region.top_chunk.get_top_block(lx, lz-CHUNK_WIDTH);
+        }
+        if is_right && is_top {
+            return region.top_right_chunk.get_top_block(lx-CHUNK_WIDTH, lz-CHUNK_WIDTH);
+        }
+        if is_right && is_center_v {
+            return region.right_chunk.get_top_block(lx-CHUNK_WIDTH, lz);
+        }
+        if is_right && is_down {
+            return region.down_right_chunk.get_top_block(lx-CHUNK_WIDTH, lz+CHUNK_WIDTH);
+        }
+        if is_center_h && is_down {
+            return region.down_chunk.get_top_block(lx, lz+CHUNK_WIDTH);
+        }
+        if is_left && is_down {
+            return region.down_left_chunk.get_top_block(lx+CHUNK_WIDTH, lz+CHUNK_WIDTH);
+        }
+        if is_left && is_center_v {
+            return region.left_chunk.get_top_block(lx+CHUNK_WIDTH, lz);
+        }
+
+        self.get_top_block(lx, lz)
+    }
+
 
     pub fn get_light(&self, lx: i32, ly: i32, lz: i32) -> u32 {
         if lx < 0
@@ -307,4 +344,46 @@ impl Chunk {
 
         self.get_light(lx, ly, lz)
     }
+
+    pub fn set_light_global(&mut self, region: &mut ChunkRegion, lx: i32, ly: i32, lz: i32, light: u32) {
+        if ly < 0 || ly >= CHUNK_HEIGHT {
+            return;
+        }
+
+        let is_top = lz >= CHUNK_WIDTH;
+        let is_down = lz < 0;
+        let is_right = lx >= CHUNK_WIDTH;
+        let is_left = lx < 0;
+        let is_center_v = !is_top && !is_down;
+        let is_center_h = !is_right && !is_left;
+
+        // block coord outside chunk check
+        if  is_left && is_top {
+            region.top_left_chunk.set_light(lx+CHUNK_WIDTH, ly, lz-CHUNK_WIDTH, light);
+        }
+        if is_center_h && is_top {
+            region.top_chunk.set_light(lx, ly, lz-CHUNK_WIDTH, light);
+        }
+        if is_right && is_top {
+            region.top_right_chunk.set_light(lx-CHUNK_WIDTH, ly, lz-CHUNK_WIDTH, light);
+        }
+        if is_right && is_center_v {
+            region.right_chunk.set_light(lx-CHUNK_WIDTH, ly, lz, light);
+        }
+        if is_right && is_down {
+            region.down_right_chunk.set_light(lx-CHUNK_WIDTH, ly, lz+CHUNK_WIDTH, light);
+        }
+        if is_center_h && is_down {
+            region.down_chunk.set_light(lx, ly, lz+CHUNK_WIDTH, light);
+        }
+        if is_left && is_down {
+            region.down_left_chunk.set_light(lx+CHUNK_WIDTH, ly, lz+CHUNK_WIDTH, light);
+        }
+        if is_left && is_center_v {
+            region.left_chunk.set_light(lx+CHUNK_WIDTH, ly, lz, light);
+        }
+
+        self.set_light(lx, ly, lz, light)
+    }
+
 }
