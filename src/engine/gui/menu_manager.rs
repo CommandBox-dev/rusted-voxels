@@ -10,8 +10,7 @@ use crate::engine::{
             UIAnchor::{AnchorCentered, AnchorMidRight, AnchorTopLeft}, UIButton, UIElement, UILabel, UITexturedRect, UITransformC,
         }, menu_manager::Menu::Closed,
     }, resources::{
-        resource_manager::{self, ResourceManager},
-        texture,
+        resource_manager::{self, ResourceManager}, texture::{self, AtlasTile, UV},
     }, world,
 };
 
@@ -36,6 +35,7 @@ pub struct MenuManager {
     pub main_menu: MainMenu,
     escape_menu: EscapeMenu,
     world_loading_screen: WorldLoadingScreenMenu,
+    game_hud: GameHUD,
 }
 
 impl MenuManager {
@@ -48,6 +48,7 @@ impl MenuManager {
             main_menu: MainMenu::new(&window_transform),
             escape_menu: EscapeMenu::new(&window_transform),
             world_loading_screen: WorldLoadingScreenMenu::new(&window_transform),
+            game_hud: GameHUD::new(&window_transform),
         }
     }
 
@@ -83,6 +84,9 @@ impl MenuManager {
     }
 
     pub fn render(&self, resource_manager: &ResourceManager) {
+
+        self.game_hud.draw(resource_manager);
+
         match &self.selected_menu {
             Menu::Closed => return,
 
@@ -152,7 +156,7 @@ impl MainMenu {
             input.is_mouse_button_pressed(MouseButton::Left as i32),
         );
         if self.button1.pressed {
-            return Some(Menu::Closed); // WorldLoadingScreen
+            return Some(Menu::WorldLoadingScreen);
         }
         None
     }
@@ -243,6 +247,7 @@ impl WorldLoadingScreenMenu {
                 0,
                 window_transform.w as u32,
                 (window_transform.h as f32 * height_aspect) as u32,
+                &UV::new(0.0, 0.0, 10.0, 10.0),
                 AnchorTopLeft,
                 window_transform,
             ),
@@ -269,8 +274,40 @@ impl WorldLoadingScreenMenu {
             &format!(
                 "Loaded Chunks: {}/{}",
                 chunk_count,
-                world::world::RENDER_AREA
+                world::world::RENDER_AREA - 100
             ),
         );
     }
 }
+
+struct GameHUD {
+    crosshair: UITexturedRect,
+}
+// TODO: Labels should support newlines
+struct DebugScreen {
+    version_label: UILabel,
+    coord_label: UILabel,
+    chunk_info_label: UILabel,
+}
+
+impl GameHUD {
+    fn new(window_transform: &UITransformC) -> Self {
+        Self {
+            crosshair: UITexturedRect::new(0, 0, 40, 40, &UV::new(0.0, 0.0, 1.0, 1.0), AnchorCentered, window_transform)
+        }
+    }
+
+    fn update(&mut self) {
+        
+    }
+
+    fn draw(&self, resource_manager: &ResourceManager) {
+        resource_manager.crosshair_tex.bind(0);
+        unsafe {gl::BlendFunc(gl::ONE_MINUS_DST_COLOR, gl::ZERO)};
+
+        self.crosshair.draw();
+
+        unsafe {gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA)};
+        resource_manager.ui_tex.bind(0);
+    }
+} 

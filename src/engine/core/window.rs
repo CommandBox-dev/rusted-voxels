@@ -86,8 +86,8 @@ impl GameWindow {
             fb_height,
             ui_projection: glam::camera::rh::proj::opengl::orthographic(
                 0.0,
-                fb_width as f32,
-                fb_height as f32,
+                width as f32,
+                height as f32,
                 0.0,
                 -1.0,
                 1.0,

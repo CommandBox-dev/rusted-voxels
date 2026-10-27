@@ -5,7 +5,7 @@ use crate::engine::{
             AnchorBottomLeft, AnchorBottomMid, AnchorBottomRight, AnchorCentered, AnchorMidLeft,
             AnchorMidRight, AnchorTopLeft, AnchorTopMid, AnchorTopRight,
         },
-    }, resources::{resource_manager::{self, ResourceManager}, texture::AtlasTile},
+    }, resources::{resource_manager::{self, ResourceManager}, texture::{AtlasTile, UV}},
 };
 
 // Components
@@ -444,7 +444,7 @@ impl UILabel {
         for c in text.chars() {
             total_width += (UILabel::get_char_width(c) * 25.0) as u32;
         }
-        println!("{total_width}");
+
         total_width
     }
 
@@ -673,17 +673,17 @@ impl UIElement for UITexturedRect {
 }
 
 impl UITexturedRect {
-    pub fn new(x: i32, y: i32, w: u32, h: u32, anchor: UIAnchor, parent_transform: &UITransformC) -> Self {
+    pub fn new(x: i32, y: i32, w: u32, h: u32, uv: &UV, anchor: UIAnchor, parent_transform: &UITransformC) -> Self {
         let mut tex_rect = Self {
             transform: UITransformC::new(x, y, w, h, anchor),
             model: UIModelC::new(),
         };
         tex_rect.transform.update_transform(&parent_transform);
-        tex_rect.rebuild_model();
+        tex_rect.rebuild_model(uv);
         tex_rect
     }
 
-    pub fn rebuild_model(&mut self) {
+    pub fn rebuild_model(&mut self, uv: &UV) {
         let x = self.transform.tx as f32;
         let y = self.transform.ty as f32;
         let w = self.transform.w as f32;
@@ -691,10 +691,10 @@ impl UITexturedRect {
 
         let tex_pixel_size = 256 as f32;
 
-        let tex_x = 0.0;
-        let tex_y = 0.0;
-        let tex_mx = 10.0;
-        let tex_my = 10.0;
+        let tex_x = uv.x;
+        let tex_y = uv.y;
+        let tex_mx = uv.x_max;
+        let tex_my = uv.y_max;
 
         let rect: [f32; 24] = [
             x + w, y + h, tex_mx, tex_my,

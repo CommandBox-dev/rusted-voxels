@@ -135,7 +135,6 @@ impl ChunkManager {
         // the old chunk while generating until replacing it
         // with the new version
         self.chunks.insert(ChunkCoord::new(cx, cz), ChunkState::InWork(GenerationStep::Empty));
-        println!("generating chunks vec len: {}", self.generating_chunks.len());
 
         self.chunks_generating += 1;
         let receiver = worker.execute(move || {
@@ -195,7 +194,6 @@ impl ChunkManager {
     }
 
     pub fn update(&mut self, block_models: &Vec<BlockModel>, worker: &Worker) {
-        // TODO: MEMORY LEAK: CHUNK RECEIVER VECS NEVER GET CLEARED
 
         for i in 0..self.generating_chunks.len() {
             
@@ -217,10 +215,11 @@ impl ChunkManager {
                     }
 
                     self.chunks.insert(coord, Available(chunk));
-                    
+
+                    self.generating_chunks.remove(i);
                 }
                 Err(TryRecvError::Empty) => { /* chunk still generating */ }
-                Err(TryRecvError::Disconnected) => { /* inactive / panicked */ }
+                Err(TryRecvError::Disconnected) => { self.generating_chunks.remove(i); /* inactive / panicked */ }
             }
         }
 
@@ -248,10 +247,11 @@ impl ChunkManager {
 
                     self.chunks.insert(coord, Available(chunk));
                     ChunkRegion::insert_chunk_region(self, &coord, region);
-                    
+
+                    self.generating_chunk_regions.remove(i);
                 }
                 Err(TryRecvError::Empty) => { /* chunk still generating */ }
-                Err(TryRecvError::Disconnected) => { /* inactive / panicked */ }
+                Err(TryRecvError::Disconnected) => { self.generating_chunk_regions.remove(i); /* inactive / panicked */ }
             }
         }
 
@@ -268,10 +268,12 @@ impl ChunkManager {
 
                     if let Some(chunk) = self.get_avl_chunk_mut(coord.x, coord.z) {
                         upload_chunk_mesh(chunk, mesh);
-                    }   
+                    }
+
+                    self.meshed_chunks.remove(i);
                 }
                 Err(TryRecvError::Empty) => { /* chunk still generating */ }
-                Err(TryRecvError::Disconnected) => { /* inactive / panicked */ }
+                Err(TryRecvError::Disconnected) => {self.meshed_chunks.remove(i); /* inactive / panicked */ }
             }
         }
 

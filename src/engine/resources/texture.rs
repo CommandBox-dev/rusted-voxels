@@ -20,6 +20,13 @@ pub struct AtlasTile {
     pub ym: f32,
 }
 
+pub struct UV {
+    pub x: f32,
+    pub y: f32,
+    pub x_max: f32,
+    pub y_max: f32,
+}
+
 impl Texture {
     pub fn from_file(path: &str) -> Self {
         Texture::upload(
@@ -164,6 +171,17 @@ impl TextureAtlas {
             texture: Texture::upload(&atlas),
             tiles,
             tiles_per_row: atlas_tiles_width,
+        }
+    }
+}
+
+impl UV {
+    pub fn new(x: f32, y: f32, x_max: f32, y_max: f32) -> Self {
+        Self {
+            x,
+            y,
+            x_max,
+            y_max,
         }
     }
 }

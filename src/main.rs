@@ -38,8 +38,6 @@ use crate::engine::physics::*;
 use crate::engine::rendering::camera::*;
 use crate::engine::rendering::chunk_mesher;
 use crate::engine::rendering::renderering_server::RenderingServer;
-use crate::engine::rendering::renderering_server::render_crosshair;
-use crate::engine::rendering::renderering_server::upload_crosshair;
 use crate::engine::resources::resource_manager::ResourceManager;
 use crate::engine::resources::shader::*;
 use crate::engine::resources::texture::*;
@@ -119,14 +117,8 @@ fn main() {
 
     rendering_server.update_shader_unif_loc(&resource_manager);
 
-    let (vao_crosshair, vbo_crosshair) = upload_crosshair(
-        resource_manager
-            .tile_atlas
-            .get_tile(String::from("crosshair")),
-        &window,
-    );
-
-    let worker = Worker::new(10); // 4
+    let worker = Worker::new(8);
+    let meshing_worker = Worker::new(5);
     let mut world: Option<World> = None;
     let mut character_controller = CharacterState::new();
 
@@ -141,12 +133,14 @@ fn main() {
         75.0,
     );
 
-    let window_transform = UITransformC::new(0, 0, window.width, window.height, AnchorTopLeft);
+    let window_transform = UITransformC::new(0, 0, window.width as u32, window.height as u32, AnchorTopLeft);
     let mut label = UILabel::new(10, 20, "x: 0.000, y: 0.000, z: 0.000", AnchorTopLeft, &window_transform);
     let mut chat_label = UILabel::new(10, -80, "Rusted-Voxels-v0.01", AnchorBottomLeft, &window_transform);
     let mut loaded_label = UILabel::new(10, 100, "Chunks Loaded: _", AnchorTopLeft, &window_transform);
 
     //audio_manager.play_sound_flat(resource_manager.white_grass_music.clone());
+    //audio_manager.play_sound_flat(resource_manager.wind.clone());
+    //audio_manager.play_sound_flat(resource_manager.forest.clone());
 
 
     let mut vao_wireframe = 0;
@@ -223,19 +217,8 @@ fn main() {
             camera.position.y = 200.0
         }
 
-        if let Some(world) = &world {
-            if world.chunk_manager.chunks_loaded == world::world::RENDER_AREA
-            && menu_manager.selected_menu == Menu::Closed // WorldLoadingScreen
-            {
-                menu_manager.selected_menu = Menu::Closed;
-            }
-            menu_manager.update(&input, &mut window, world.chunk_manager.chunks_loaded);
-        } else {
-            menu_manager.update(&input, &mut window, 0);
-        }
-
         if let Some(world) = &mut world {
-            world.update_dirty_chunks(&resource_manager.block_models, &worker);
+            world.update_dirty_chunks(&resource_manager.block_models, &meshing_worker);
             character_controller.update(
                 &mut camera,
                 &input,
@@ -248,11 +231,27 @@ fn main() {
 
             loaded_label.build_mesh(
                 &format!(
-                    "Chunks Generating: {}, Chunks Loaded: {}",
+                    "Chunks Generating: {}, Chunks Loaded: {}, window size: {}, {}, framebuffer size: {}, {}",
                     world.chunk_manager.chunks_generating,
                     world.chunk_manager.chunks_loaded,
+                    window.width,
+                    window.height,
+                    window.fb_width,
+                    window.fb_height,
                 )
             );
+        }
+        
+        if let Some(world) = &world {
+            if world.chunk_manager.chunks_loaded >= world::world::RENDER_AREA - 100
+            && menu_manager.selected_menu == Menu::WorldLoadingScreen
+            {
+                menu_manager.selected_menu = Menu::Closed;
+                camera.position.y = 200.0;
+            }
+            menu_manager.update(&input, &mut window, world.chunk_manager.chunks_loaded);
+        } else {
+            menu_manager.update(&input, &mut window, 0);
         }
 
         rendering_server.render(
@@ -261,7 +260,6 @@ fn main() {
             &character_controller,
             &mut world,
             &window.ui_projection,
-            vao_crosshair,
             &input,
             &label,
             &chat_label,

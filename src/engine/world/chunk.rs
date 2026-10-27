@@ -23,7 +23,7 @@ pub struct Chunk {
     gen_step: GenerationStep,
     dirty: bool,
 
-    pub blocktype_data: Box<[u32; CHUNK_VOLUME as usize]>,
+    pub blocktype_data: Box<[u8; CHUNK_VOLUME as usize]>,
     pub light_data: Box<[u32; CHUNK_VOLUME as usize]>,
 
     pub uptime: u32,
@@ -94,7 +94,7 @@ impl Chunk {
 
         let index = Chunk::voxel_index(lx, ly, lz);
 
-        self.blocktype_data[index]
+        self.blocktype_data[index] as u32
     }
 
     pub fn set_block(&mut self, lx: i32, ly: i32, lz: i32, block: u32) {
@@ -110,7 +110,7 @@ impl Chunk {
 
         let index = Chunk::voxel_index(lx, ly, lz);
 
-        self.blocktype_data[index] = block;
+        self.blocktype_data[index] = block as u8;
     }
     /// Replaces block and returns the replaced block
     pub fn insert_block(&mut self, lx: i32, ly: i32, lz: i32, block: u32) -> u32 {
@@ -127,9 +127,9 @@ impl Chunk {
         let index = Chunk::voxel_index(lx, ly, lz);
 
         let replaced_block = self.blocktype_data[index];
-        self.blocktype_data[index] = block;
+        self.blocktype_data[index] = block as u8;
 
-        replaced_block
+        replaced_block as u32
     }
 
     /// Returns the block of the adjacent chunk if the position is outside chunk bounds
@@ -226,7 +226,7 @@ impl Chunk {
             let block = self.blocktype_data[index];
 
             if block != 0 {
-                return (block, ly as u32);
+                return (block as u32, ly as u32);
             }
         }
 

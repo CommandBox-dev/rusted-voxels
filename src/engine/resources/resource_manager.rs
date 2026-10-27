@@ -11,6 +11,7 @@ pub struct ResourceManager {
     pub font_tex: Texture,
     pub ui_tex: Texture,
     pub background_tex: Texture,
+    pub crosshair_tex: Texture,
 
     pub block_models: Vec<BlockModel>,
 
@@ -22,6 +23,8 @@ pub struct ResourceManager {
     pub place_sound: StaticSoundData,
     pub break_sound: StaticSoundData,
     pub white_grass_music: StaticSoundData,
+    //pub forest: StaticSoundData,
+    //pub wind: StaticSoundData,
 }
 
 impl ResourceManager {
@@ -31,6 +34,7 @@ impl ResourceManager {
             font_tex: Texture::from_file("./res/textures/ui/font_shaded.png"),
             ui_tex: Texture::from_file("./res/textures/ui/ui.png"),
             background_tex: Texture::from_file("./res/textures/blocks/labyrinth_stone.png"),
+            crosshair_tex: Texture::from_file("./res/textures/blocks/crosshair.png"),
 
             block_models: Vec::new(),
 
@@ -58,6 +62,10 @@ impl ResourceManager {
                 .expect("Failed to load sound from file"),
             white_grass_music: StaticSoundData::from_file("./res/audio/voxel_white_grass.mp3")
                 .expect("Failed to load sound from file"),
+            //forest: StaticSoundData::from_file("./res/audio/ambient/forest.mp3")
+            //    .expect("Failed to load sound from file"),
+            //wind: StaticSoundData::from_file("./res/audio/ambient/wind.mp3")
+            //    .expect("Failed to load sound from file"),
         };
 
         let cobblestone = manual.tile_atlas.get_tile(String::from("stone"));
