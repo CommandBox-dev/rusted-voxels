@@ -86,17 +86,17 @@ impl TerrainGenerator {
     }
 
     pub fn generate_terrain(&self, chunk: &mut Chunk, total_block_count: u32) {
-        /*for x in 0..CHUNK_WIDTH {
+        for x in 0..CHUNK_WIDTH {
             for z in 0..CHUNK_WIDTH {
                 for y in 0..CHUNK_HEIGHT {
                     if y > 30 {continue;}
-                    let local_voxel_index = chunk::voxel_index(x, y, z);
+                    let local_voxel_index = Chunk::voxel_index(x, y, z);
                     chunk.blocktype_data[local_voxel_index] = 4;
                 }
             }
         }
-        chunk.generation_step = GenerationStep::Terrain;
-        return;*/
+        chunk.set_generation_step(GenerationStep::Terrain);
+        return;
 
         let height_offset = 60; // 30
 

@@ -5,13 +5,13 @@ use crate::engine::{
     core::{
         input::Input,
         window::{self, GameWindow},
-    }, gui::{
+    }, entities::character_controller::{self, CharacterState}, gui::{
         basic_ui::{
-            UIAnchor::{AnchorCentered, AnchorMidRight, AnchorTopLeft}, UIButton, UIElement, UILabel, UITexturedRect, UITransformC,
+            UIAnchor::{AnchorBottomLeft, AnchorBottomMid, AnchorCentered, AnchorMidRight, AnchorTopLeft}, UIButton, UIElement, UILabel, UITexturedRect, UITransformC,
         }, menu_manager::Menu::Closed,
-    }, resources::{
+    }, physics::aabb::AABB, resources::{
         resource_manager::{self, ResourceManager}, texture::{self, AtlasTile, UV},
-    }, world,
+    }, world::{self, world::World},
 };
 
 #[derive(PartialEq, Eq, Debug)]
@@ -282,6 +282,8 @@ impl WorldLoadingScreenMenu {
 
 struct GameHUD {
     crosshair: UITexturedRect,
+    hotbar: UITexturedRect,
+    //selected_slot: UITexturedRect,
 }
 // TODO: Labels should support newlines
 struct DebugScreen {
@@ -292,8 +294,13 @@ struct DebugScreen {
 
 impl GameHUD {
     fn new(window_transform: &UITransformC) -> Self {
+        let tex_size = 256.0;
+
+        // TODO: remove all "mid" from UIAnchor names, AnchorBottomMid -> AnchorBottom
+
         Self {
-            crosshair: UITexturedRect::new(0, 0, 40, 40, &UV::new(0.0, 0.0, 1.0, 1.0), AnchorCentered, window_transform)
+            crosshair: UITexturedRect::new(0, 0, 40, 40, &UV::new(0.0, 0.0, 1.0, 1.0), AnchorCentered, window_transform),
+            hotbar: UITexturedRect::new(0, -10, 80 * 10, 80, &UV::new(96.0 / tex_size, 0.0 / tex_size, tex_size / tex_size, 16.0 / tex_size), AnchorBottomMid, window_transform),
         }
     }
 
@@ -309,5 +316,47 @@ impl GameHUD {
 
         unsafe {gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA)};
         resource_manager.ui_tex.bind(0);
+
+        self.hotbar.draw();
     }
-} 
+}
+
+impl DebugScreen {
+    fn new(window_transform: &UITransformC) -> Self {
+        Self {
+            version_label: UILabel::new(10, -80, "Rusted-Voxels-v0.01", AnchorBottomLeft, &window_transform),
+            coord_label: UILabel::new(10, 20, "x: 0.000, y: 0.000, z: 0.000", AnchorTopLeft, &window_transform),
+            chunk_info_label: UILabel::new(10, 100, "Chunks Loaded: _", AnchorTopLeft, &window_transform),
+        }
+    }
+
+    fn update(&mut self, world: Option<&World>, character_controller: Option<&CharacterState>) {
+
+        if let Some(world) = world {
+            self.chunk_info_label.build_mesh(
+                &format!(
+                    "Chunks Generating: {}, Chunks Loaded: {},",
+                    world.chunk_manager.chunks_generating,
+                    world.chunk_manager.chunks_loaded,
+                )
+            );
+        }
+
+        if let Some(character_controller) = character_controller {
+            self.coord_label.build_mesh(
+                &format!(
+                    "x: {:.3}, y: {:.3}, z: {:.3}",
+                    character_controller.position.x,
+                    character_controller.position.y + AABB::HUMANOID.min.y,
+                    character_controller.position.z
+                )
+            );
+        }
+    }
+
+    fn render(&self) {
+        self.chunk_info_label.draw();
+        self.version_label.draw();
+        self.coord_label.draw();
+    }
+}

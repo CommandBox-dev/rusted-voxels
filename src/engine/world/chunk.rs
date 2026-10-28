@@ -51,7 +51,7 @@ impl Chunk {
             dirty: false,
 
             blocktype_data: Box::new([0; CHUNK_VOLUME as usize]),
-            light_data: Box::new([0; CHUNK_VOLUME as usize]),
+            light_data: Box::new([8; CHUNK_VOLUME as usize]),
 
             uptime: 0,
 

@@ -135,9 +135,6 @@ impl RenderingServer {
         world: &mut Option<World>,
         ui_proj: &Mat4,
         input: &Input,
-        label: &UILabel,
-        chat_label: &UILabel,
-        loaded_label: &UILabel,
         menu_manager: &MenuManager,
         vao_debug: u32,
     ) {
@@ -168,6 +165,19 @@ impl RenderingServer {
             if let Some(world) = world {
                 rendering::chunk_renderer::render_chunks(world, self.chunk_model_loc, self.chunk_fade_loc);
             }
+
+
+            let block_mesh = &resource_manager.block_meshes[12];
+            let mut model = Mat4::from_translation(Vec3::new(0.0, 150.0, 0.0));
+            //model *= Mat4::from_scale(Vec3::splat(1.02));
+
+            resource_manager.base_shader.bind();
+            gl::UniformMatrix4fv(self.base_model_loc, 1, gl::FALSE, model.to_cols_array().as_ptr());
+            gl::UniformMatrix4fv(self.base_view_loc, 1, gl::FALSE, camera.view.to_cols_array().as_ptr());
+            gl::UniformMatrix4fv(self.base_proj_loc, 1, gl::FALSE, camera.projection.to_cols_array().as_ptr());
+
+            gl::BindVertexArray(block_mesh.vao);
+            gl::DrawArrays(gl::TRIANGLES, 0, block_mesh.vertex_count as i32);
 
 
             gl::Disable(gl::CULL_FACE);
@@ -206,9 +216,6 @@ impl RenderingServer {
             resource_manager.ui_tex.bind(0);
             menu_manager.render(resource_manager);
             resource_manager.font_tex.bind(0);
-            label.draw();
-            chat_label.draw();
-            loaded_label.draw();
 
             gl::Enable(gl::DEPTH_TEST);
         }

@@ -1,9 +1,7 @@
 use kira::sound::static_sound::StaticSoundData;
 
 use crate::engine::{
-    self,
-    blocks::block_model::BlockModel,
-    resources::{shader::*, texture::*},
+    self, blocks::block_model::BlockModel, rendering::mesh::BasicMesh, resources::{shader::*, texture::*},
 };
 
 pub struct ResourceManager {
@@ -14,6 +12,7 @@ pub struct ResourceManager {
     pub crosshair_tex: Texture,
 
     pub block_models: Vec<BlockModel>,
+    pub block_meshes: Vec<BasicMesh>,
 
     pub base_shader: Shader,
     pub ui_shader: Shader,
@@ -37,6 +36,7 @@ impl ResourceManager {
             crosshair_tex: Texture::from_file("./res/textures/blocks/crosshair.png"),
 
             block_models: Vec::new(),
+            block_meshes: Vec::new(),
 
             base_shader: Shader::load_from_file(
                 "./res/shaders/basic.vert",
@@ -113,6 +113,10 @@ impl ResourceManager {
             BlockModel::new_cube(log),
             BlockModel::new_cube(leafes),
         ];
+
+        for model in &manual.block_models {
+            manual.block_meshes.push(BasicMesh::from_block_model(model));
+        }
 
         manual
     }

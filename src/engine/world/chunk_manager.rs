@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::mpsc::TryRecvError};
 
 use rand::random_range;
 
-use crate::{engine::{blocks::{block::Block, block_model::{self, BlockModel}}, core::worker::Worker, rendering::{chunk_mesher, chunk_renderer::{self, upload_chunk_mesh}}, util::utility::inside_circle, world::{chunk::{CHUNK_WIDTH, Chunk}, chunk_manager::ChunkState::{Available, InWork}, chunk_region::ChunkRegion, chunk_state::{ChunkState, GenerationStep}, generation::{self, terrain_generator::{TerrainGenerator, Worldtype}}, lighting_system, voxel_coordinates::*, world::RENDER_DISTANCE}}, game::terrain_features::{oak_tree::OakTree, test_structure::TestStruct}};
+use crate::{engine::{blocks::{block::Block, block_model::{self, BlockModel}}, core::worker::Worker, rendering::{chunk_mesher, chunk_renderer::{self, upload_chunk_mesh}}, util::utility::inside_circle, world::{chunk::{CHUNK_WIDTH, Chunk}, chunk_manager::ChunkState::{Available, InWork}, chunk_region::ChunkRegion, chunk_state::{ChunkState, GenerationStep}, generation::{self, terrain_generator::{TerrainGenerator, Worldtype}}, lighting_system, voxel_coordinates::*, world::RENDER_DISTANCE}}, game::terrain_features::{basic_room::BasicRoom, oak_tree::OakTree, test_structure::TestStruct}};
 
 
 /// Instanced once per loaded dimension
@@ -316,8 +316,12 @@ impl ChunkManager {
 
             let receiver = worker.execute(move || {
 
-                for i in 1..random_range(10..40) { // 1..20
-                    TerrainGenerator::generate_structure(&OakTree {}, &mut chunk, &mut region);
+                for i in 1..=random_range(3..5) { // 1..20 // 10..40
+                    TerrainGenerator::generate_structure(&BasicRoom {}, &mut chunk, &mut region);
+                }
+                
+                for i in 1..=random_range(3..5) {
+                    TerrainGenerator::generate_structure(&TestStruct {}, &mut chunk, &mut region);
                 }
 
                 chunk.set_generation_step(GenerationStep::DirectLight);

@@ -110,11 +110,9 @@ fn main() {
     let mut resource_manager = ResourceManager::new();
     let mut audio_manager = AudioServer::new();
     let mut menu_manager = MenuManager::new(&window);
+    let mut rendering_server = RenderingServer::new();
     
     menu_manager.set_menu(Menu::Main);
-    
-    let mut rendering_server = RenderingServer::new();
-
     rendering_server.update_shader_unif_loc(&resource_manager);
 
     let worker = Worker::new(8);
@@ -122,10 +120,8 @@ fn main() {
     let mut world: Option<World> = None;
     let mut character_controller = CharacterState::new();
 
-    let cam_spawn_pos = Vec3::new(0.0, 200.0, 0.0);
-
     let mut camera = Camera::new(
-        cam_spawn_pos,
+        Vec3::ZERO,
         0.0,
         0.0,
         window.fb_width as u32,
@@ -134,14 +130,7 @@ fn main() {
     );
 
     let window_transform = UITransformC::new(0, 0, window.width as u32, window.height as u32, AnchorTopLeft);
-    let mut label = UILabel::new(10, 20, "x: 0.000, y: 0.000, z: 0.000", AnchorTopLeft, &window_transform);
-    let mut chat_label = UILabel::new(10, -80, "Rusted-Voxels-v0.01", AnchorBottomLeft, &window_transform);
-    let mut loaded_label = UILabel::new(10, 100, "Chunks Loaded: _", AnchorTopLeft, &window_transform);
-
     //audio_manager.play_sound_flat(resource_manager.white_grass_music.clone());
-    //audio_manager.play_sound_flat(resource_manager.wind.clone());
-    //audio_manager.play_sound_flat(resource_manager.forest.clone());
-
 
     let mut vao_wireframe = 0;
     let mut vbo_wireframe = 0;
@@ -184,18 +173,8 @@ fn main() {
 
 
 
-
     'game_loop: while !window.should_close() {
         window.poll_events(&mut input, &mut camera);
-
-        label.build_mesh(
-            &format!(
-                "x: {:.3}, y: {:.3}, z: {:.3}",
-                camera.position.x,
-                camera.position.y + AABB::HUMANOID.min.y,
-                camera.position.z
-            )
-        );
 
         if menu_manager.main_menu.button1.pressed && world.is_none() {
             world = Some(World::new());
@@ -205,19 +184,12 @@ fn main() {
         if let Some(world) = &mut world {
             world.update(&resource_manager.block_models, &worker);
             world.chunk_manager.load_chunks_in_radius(
-                camera.position.x as i32,
-                camera.position.z as i32,
+                character_controller.position.x as i32,
+                character_controller.position.z as i32,
                 RENDER_DISTANCE,
                 &worker,
                 &resource_manager.block_models
             );
-        }
-
-        if camera.position.y < -10.0 {
-            camera.position.y = 200.0
-        }
-
-        if let Some(world) = &mut world {
             world.update_dirty_chunks(&resource_manager.block_models, &meshing_worker);
             character_controller.update(
                 &mut camera,
@@ -228,18 +200,6 @@ fn main() {
                 &mut audio_manager,
                 &resource_manager,
             );
-
-            loaded_label.build_mesh(
-                &format!(
-                    "Chunks Generating: {}, Chunks Loaded: {}, window size: {}, {}, framebuffer size: {}, {}",
-                    world.chunk_manager.chunks_generating,
-                    world.chunk_manager.chunks_loaded,
-                    window.width,
-                    window.height,
-                    window.fb_width,
-                    window.fb_height,
-                )
-            );
         }
         
         if let Some(world) = &world {
@@ -247,7 +207,7 @@ fn main() {
             && menu_manager.selected_menu == Menu::WorldLoadingScreen
             {
                 menu_manager.selected_menu = Menu::Closed;
-                camera.position.y = 200.0;
+                character_controller.position.y = 200.0;
             }
             menu_manager.update(&input, &mut window, world.chunk_manager.chunks_loaded);
         } else {
@@ -261,9 +221,6 @@ fn main() {
             &mut world,
             &window.ui_projection,
             &input,
-            &label,
-            &chat_label,
-            &loaded_label,
             &menu_manager,
             vao_wireframe,
         );

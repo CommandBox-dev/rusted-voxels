@@ -13,22 +13,23 @@ use crate::engine::rendering::camera::Camera;
 use crate::engine::resources::resource_manager::{self, ResourceManager};
 use crate::engine::world::world::World;
 
-// this is just temporarily, i will fix it later
 
 pub struct CharacterState {
     pub selected_block: u32,
     pub target_block: IVec3,
-    pub is_on_floor: bool,
+    pub position: Vec3,
     pub velocity: Vec3,
+    pub is_on_floor: bool,
 }
 
 impl CharacterState {
     pub fn new() -> Self {
         Self {
             selected_block: 16, // 5
-            target_block: IVec3::new(0, 0, 0),
-            is_on_floor: false,
+            target_block: IVec3::ZERO,
+            position: Vec3::ZERO,
             velocity: Vec3::ZERO,
+            is_on_floor: false,
         }
     }
 
@@ -44,6 +45,7 @@ impl CharacterState {
     ) {
         let result = raycast::cast_ray(camera.position, camera.front, 6.0, &mut world);
         self.target_block = result.hit_position;
+
         // breaking
         if menu_manager.selected_menu == Menu::Closed
             && input.is_mouse_button_pressed(MouseButton::Left as i32)
@@ -143,11 +145,18 @@ impl CharacterState {
         self.velocity += camera.right * movement_input.y * window.delta * speed;
         self.velocity.y += vel_y;
 
-        let result = move_and_collide(world, &camera.position, &mut self.velocity, &AABB::HUMANOID);
+        // void
+        if self.position.y < -10.0 {
+            self.position.y = 200.0;
+            self.velocity = Vec3::ZERO;
+        }
+
+        let result = move_and_collide(world, &self.position, &mut self.velocity, &AABB::HUMANOID);
         self.is_on_floor = result.is_on_floor;
 
-        camera.position += self.velocity;
-
+        self.position += self.velocity;
+        
+        camera.position = self.position;
         camera.recalculate_view();
     }
 }
