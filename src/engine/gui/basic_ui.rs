@@ -148,7 +148,7 @@ impl UIModelC {
         }
     }
 
-    fn destroy(&mut self) {
+    pub fn destroy(&mut self) {
         unsafe {
             if self.vao != 0 {
                 gl::DeleteVertexArrays(1, &mut self.vao);
@@ -333,7 +333,7 @@ pub struct UITextBox {
 // implemented
 pub struct UITexturedRect {
     transform: UITransformC,
-    model: UIModelC,
+    pub model: UIModelC,
 }
 
 // Layout

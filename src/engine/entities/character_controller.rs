@@ -15,7 +15,7 @@ use crate::engine::world::world::World;
 
 
 pub struct CharacterState {
-    pub selected_block: u32,
+    pub selected_slot: u32,
     pub target_block: IVec3,
     pub position: Vec3,
     pub velocity: Vec3,
@@ -25,7 +25,7 @@ pub struct CharacterState {
 impl CharacterState {
     pub fn new() -> Self {
         Self {
-            selected_block: 16, // 5
+            selected_slot: 2,
             target_block: IVec3::ZERO,
             position: Vec3::ZERO,
             velocity: Vec3::ZERO,
@@ -70,7 +70,7 @@ impl CharacterState {
                     result.hit_position.x + result.hit_normal.x,
                     result.hit_position.y + result.hit_normal.y,
                     result.hit_position.z + result.hit_normal.z,
-                    self.selected_block,
+                    self.selected_slot + 1,
                 );
                 audio_manager.play_sound_flat(resource_manager.place_sound.clone());
             }
@@ -81,9 +81,59 @@ impl CharacterState {
             && input.is_mouse_button_pressed(MouseButton::Middle as i32)
         {
             if result.hit {
-                self.selected_block = result.hit_block;
+                self.selected_slot = result.hit_block - 1;
             }
         }
+
+        // hotbar
+
+        if menu_manager.selected_menu == Menu::Closed {
+            if input.is_pressed(Key::Right as i32) {
+                self.selected_slot += 1;
+                if self.selected_slot >= 10 {
+                    self.selected_slot = 0;
+                }
+            }
+            if input.is_pressed(Key::Left as i32) {
+                if self.selected_slot == 0 {
+                    self.selected_slot = 9;
+                } else {
+                    self.selected_slot -= 1;
+                }
+            }
+
+            if input.is_pressed(Key::Num1 as i32) {
+                self.selected_slot = 0;
+            }
+            if input.is_pressed(Key::Num2 as i32) {
+                self.selected_slot = 1;
+            }
+            if input.is_pressed(Key::Num3 as i32) {
+                self.selected_slot = 2;
+            }
+            if input.is_pressed(Key::Num4 as i32) {
+                self.selected_slot = 3;
+            }
+            if input.is_pressed(Key::Num5 as i32) {
+                self.selected_slot = 4;
+            }
+            if input.is_pressed(Key::Num6 as i32) {
+                self.selected_slot = 5;
+            }
+            if input.is_pressed(Key::Num7 as i32) {
+                self.selected_slot = 6;
+            }
+            if input.is_pressed(Key::Num8 as i32) {
+                self.selected_slot = 7;
+            }
+            if input.is_pressed(Key::Num9 as i32) {
+                self.selected_slot = 8;
+            }
+            if input.is_pressed(Key::Num0 as i32) {
+                self.selected_slot = 9;
+            }
+        }
+
 
         // structure placement
         if menu_manager.selected_menu == Menu::Closed && input.is_pressed(Key::P as i32) {

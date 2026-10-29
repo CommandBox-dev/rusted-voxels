@@ -101,6 +101,17 @@ impl BasicMesh {
         }
     }
 
+    pub fn from_vertex_data(vertex_data: &Vec<f32>) -> Self {
+        let vertex_count = (vertex_data.len() / 6) as u32;
+        let (vao, vbo) = BasicMesh::upload_mesh(&vertex_data);
+
+        Self {
+            vao,
+            vbo,
+            vertex_count,
+        }
+    }
+
     pub fn destroy(&mut self) {
         unsafe {
             if self.vao != 0 {
@@ -166,9 +177,9 @@ impl BasicMesh {
     fn add_vertex(mesh: &mut Vec<f32>, u: f32, v: f32, light: f32, vertex: u32) {
         let vertex_sub_pos = (vertex * 3) as usize;
         // position
-        mesh.push(VERTICES[vertex_sub_pos]);
-        mesh.push(VERTICES[vertex_sub_pos + 1]);
-        mesh.push(VERTICES[vertex_sub_pos + 2]);
+        mesh.push(VERTICES[vertex_sub_pos] - 0.5);
+        mesh.push(VERTICES[vertex_sub_pos + 1] - 0.5);
+        mesh.push(VERTICES[vertex_sub_pos + 2] - 0.5);
         // uv
         mesh.push(u);
         mesh.push(v);

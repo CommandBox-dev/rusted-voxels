@@ -209,10 +209,9 @@ fn main() {
                 menu_manager.selected_menu = Menu::Closed;
                 character_controller.position.y = 200.0;
             }
-            menu_manager.update(&input, &mut window, world.chunk_manager.chunks_loaded);
-        } else {
-            menu_manager.update(&input, &mut window, 0);
         }
+
+        menu_manager.update(&input, &mut window, &window_transform, &character_controller, world.as_ref());
 
         rendering_server.render(
             &resource_manager,
@@ -223,6 +222,7 @@ fn main() {
             &input,
             &menu_manager,
             vao_wireframe,
+            &window,
         );
 
         window.swap_buffers();

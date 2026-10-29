@@ -10,10 +10,11 @@ pub struct TextureAtlas {
     pub texture: Texture,
     pub tiles: Vec<AtlasTile>,
     pub tiles_per_row: u32,
+    pub image_buffer: Option<ImageBuffer<Rgba<u8>, Vec<u8>>>,
 }
 
 pub struct AtlasTile {
-    name: String,
+    pub name: String,
     pub x: f32,
     pub y: f32,
     pub xm: f32,
@@ -25,6 +26,12 @@ pub struct UV {
     pub y: f32,
     pub x_max: f32,
     pub y_max: f32,
+}
+
+impl UV {
+    pub fn new(x: f32, y: f32, x_max: f32, y_max: f32) -> Self {
+        Self {x, y, x_max,y_max}
+    }
 }
 
 impl Texture {
@@ -106,7 +113,7 @@ impl TextureAtlas {
         &self.tiles[0]
     }
 
-    pub fn create_from_tile_pool_dir(image_pool_path: &str) -> Self {
+    pub fn from_tile_pool_dir(image_pool_path: &str, keep_image_cpu: bool) -> Self {
         let tile_size = 16;
 
         let mut images = Vec::new();
@@ -171,17 +178,11 @@ impl TextureAtlas {
             texture: Texture::upload(&atlas),
             tiles,
             tiles_per_row: atlas_tiles_width,
+            image_buffer: if keep_image_cpu {Some(atlas)} else {None},
         }
     }
-}
 
-impl UV {
-    pub fn new(x: f32, y: f32, x_max: f32, y_max: f32) -> Self {
-        Self {
-            x,
-            y,
-            x_max,
-            y_max,
-        }
+    pub fn clear_cpu_image(&mut self) {
+        self.image_buffer = None;
     }
 }

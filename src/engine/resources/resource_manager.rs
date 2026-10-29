@@ -1,18 +1,21 @@
 use kira::sound::static_sound::StaticSoundData;
 
 use crate::engine::{
-    self, blocks::block_model::BlockModel, rendering::mesh::BasicMesh, resources::{shader::*, texture::*},
+    self, blocks::block_model::BlockModel, rendering::{mesh::BasicMesh, voxel_mesher::voxelize_atlas}, resources::{shader::*, texture::*},
 };
 
 pub struct ResourceManager {
     pub tile_atlas: TextureAtlas,
+    pub item_atlas: TextureAtlas,
     pub font_tex: Texture,
     pub ui_tex: Texture,
     pub background_tex: Texture,
+    pub background_bricks_tex: Texture,
     pub crosshair_tex: Texture,
 
     pub block_models: Vec<BlockModel>,
     pub block_meshes: Vec<BasicMesh>,
+    pub item_meshes: Vec<BasicMesh>,
 
     pub base_shader: Shader,
     pub ui_shader: Shader,
@@ -21,7 +24,7 @@ pub struct ResourceManager {
 
     pub place_sound: StaticSoundData,
     pub break_sound: StaticSoundData,
-    pub white_grass_music: StaticSoundData,
+    pub white_grass_music: Option<StaticSoundData>,
     //pub forest: StaticSoundData,
     //pub wind: StaticSoundData,
 }
@@ -29,14 +32,17 @@ pub struct ResourceManager {
 impl ResourceManager {
     pub fn new() -> Self {
         let mut manual = Self {
-            tile_atlas: TextureAtlas::create_from_tile_pool_dir("./res/textures/blocks"),
+            tile_atlas: TextureAtlas::from_tile_pool_dir("./res/textures/blocks", false),
+            item_atlas: TextureAtlas::from_tile_pool_dir("./res/textures/items", true),
             font_tex: Texture::from_file("./res/textures/ui/font_shaded.png"),
             ui_tex: Texture::from_file("./res/textures/ui/ui.png"),
             background_tex: Texture::from_file("./res/textures/blocks/labyrinth_stone.png"),
+            background_bricks_tex: Texture::from_file("./res/textures/blocks/bricks.png"),
             crosshair_tex: Texture::from_file("./res/textures/blocks/crosshair.png"),
 
             block_models: Vec::new(),
             block_meshes: Vec::new(),
+            item_meshes: Vec::new(),
 
             base_shader: Shader::load_from_file(
                 "./res/shaders/basic.vert",
@@ -60,8 +66,8 @@ impl ResourceManager {
                 .expect("Failed to load sound from file"),
             break_sound: StaticSoundData::from_file("./res/audio/break.mp3")
                 .expect("Failed to load sound from file"),
-            white_grass_music: StaticSoundData::from_file("./res/audio/voxel_white_grass.mp3")
-                .expect("Failed to load sound from file"),
+            white_grass_music: None, //StaticSoundData::from_file("./res/audio/voxel_white_grass.mp3")
+                //.expect("Failed to load sound from file"),
             //forest: StaticSoundData::from_file("./res/audio/ambient/forest.mp3")
             //    .expect("Failed to load sound from file"),
             //wind: StaticSoundData::from_file("./res/audio/ambient/wind.mp3")
@@ -90,6 +96,7 @@ impl ResourceManager {
         let pillar = manual.tile_atlas.get_tile(String::from("pillar"));
         let leafes = manual.tile_atlas.get_tile(String::from("leafes"));
         let log = manual.tile_atlas.get_tile(String::from("bark"));
+        let snow = manual.tile_atlas.get_tile(String::from("snow"));
 
         manual.block_models = vec![
             BlockModel::new_cube(cobblestone),
@@ -112,11 +119,14 @@ impl ResourceManager {
             //BlockModel::new_cube_sides_top_bottom(face, labyrinth_stone, labyrinth_stone),
             BlockModel::new_cube(log),
             BlockModel::new_cube(leafes),
+            BlockModel::new_cube(snow),
         ];
 
         for model in &manual.block_models {
             manual.block_meshes.push(BasicMesh::from_block_model(model));
         }
+
+        manual.item_meshes = voxelize_atlas(&manual.item_atlas);
 
         manual
     }

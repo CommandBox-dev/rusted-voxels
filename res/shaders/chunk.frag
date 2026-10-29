@@ -20,7 +20,7 @@ void main()
     float fog_factor = (fog_end - dist) / (fog_end - fog_start);
     fog_factor = clamp(fog_factor, 0.0, 1.0);
 
-    float light = max(light, fog_factor * 2.0);
+    //float light = max(light, fog_factor * 2.0);
 
     vec4 tex = texture(u_texture, uv);
     tex.rgb *= light;

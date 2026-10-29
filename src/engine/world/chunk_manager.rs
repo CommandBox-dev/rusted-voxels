@@ -316,13 +316,17 @@ impl ChunkManager {
 
             let receiver = worker.execute(move || {
 
-                for i in 1..=random_range(3..5) { // 1..20 // 10..40
+                for i in 1..=random_range(0..10) { // 1..20, 10..40
+                    TerrainGenerator::generate_structure(&OakTree {}, &mut chunk, &mut region);
+                }
+
+                /*for i in 1..=random_range(3..5) {
                     TerrainGenerator::generate_structure(&BasicRoom {}, &mut chunk, &mut region);
                 }
                 
                 for i in 1..=random_range(3..5) {
                     TerrainGenerator::generate_structure(&TestStruct {}, &mut chunk, &mut region);
-                }
+                }*/
 
                 chunk.set_generation_step(GenerationStep::DirectLight);
 

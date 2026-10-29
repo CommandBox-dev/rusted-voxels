@@ -15,11 +15,17 @@ const vec3 fog_color = vec3(0.8, 0.8, 0.8);
 void main()
 {
     vec4 tex = texture(u_texture, uv);
+
+    if (tex.a < 0.1) {
+        discard;
+    }
+
     tex.rgb *= light;
 
     // fog
     float fog_factor = (fog_end - dist) / (fog_end - fog_start);
     fog_factor = clamp(fog_factor, 0.0, 1.0);
 
-    FragColor = vec4(mix(fog_color, tex.rgb, fog_factor), 1.0);
+    //FragColor = vec4(mix(fog_color, tex.rgb, fog_factor), 1.0);
+    FragColor = vec4(tex.rgb, 1.0);
 }

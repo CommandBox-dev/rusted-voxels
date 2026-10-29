@@ -187,7 +187,7 @@ impl TerrainGenerator {
                         placed = true;
                     } else {
                         if placed {
-                            chunk.blocktype_data[index] = 4;
+                            chunk.blocktype_data[index] = 18; // 4
                         }
                         placed = false;
                     }
