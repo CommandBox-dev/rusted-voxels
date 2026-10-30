@@ -1,6 +1,6 @@
 use rand::random_range;
 
-use crate::{engine::world::{chunk::{CHUNK_WIDTH, Chunk}, chunk_region::ChunkRegion, structure::{ProceduralStructure, Structure}}, game::terrain_features::oak_tree};
+use crate::{engine::world::{chunk::{CHUNK_WIDTH, Chunk}, chunk_region::ChunkRegion, structure::{ProceduralStructure, Structure}}};
 
 pub struct BasicRoom {}
 

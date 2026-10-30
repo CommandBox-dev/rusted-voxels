@@ -5,7 +5,8 @@ use glfw::MouseButton;
 
 use crate::engine::{
     blocks::block_model::BlockModel, core::{input::Input, window::GameWindow}, entities::character_controller::CharacterState, gui::{
-        basic_ui::{UIButton, UICheckBox, UIElement, UILabel},
+        elements::{button::UIButton, check_box::UICheckBox, label::UILabel},
+        basic_ui::UIElement,
         menu_manager::{self, Menu, MenuManager},
     }, rendering::{self, camera::Camera, chunk_mesher}, resources::{
         resource_manager::{self, ResourceManager},
@@ -175,14 +176,14 @@ impl RenderingServer {
                 gl::DrawArrays(gl::TRIANGLES, 0, block_mesh.vertex_count as i32);
 
 
-                // 3D
+                // 3D Item
                 resource_manager.item_atlas.bind(0);
                 gl::BindVertexArray(item_mesh.vao);
 
                 let model = Mat4::from_scale_rotation_translation(
                     Vec3::splat(2.0), // scale
                     Quat::IDENTITY,
-                    Vec3::new(0.0, 41.0, 0.0), // position
+                    Vec3::new(0.0, 80.0, 0.0), // position
                 );
                 gl::UniformMatrix4fv(self.base_model_loc, 1, gl::FALSE, model.to_cols_array().as_ptr());
                 gl::UniformMatrix4fv(self.base_view_loc, 1, gl::FALSE, camera.view.to_cols_array().as_ptr());

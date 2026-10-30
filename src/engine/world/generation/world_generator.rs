@@ -7,7 +7,7 @@ use crate::engine::world::chunk;
 use crate::engine::world::chunk::*;
 use crate::engine::world::chunk_region::ChunkRegion;
 use crate::engine::world::chunk_state::GenerationStep;
-use crate::engine::world::generation::terrain_generator;
+use crate::engine::world::generation::world_generator;
 use crate::engine::world::structure::Structure;
 
 use fastnoise_lite::FastNoiseLite;
@@ -18,7 +18,7 @@ use fastnoise_lite::NoiseType::Perlin;
 use rand::Rng;
 use rand::random_range;
 
-pub struct TerrainGenerator {
+pub struct WorldGenerator {
     pub seed: i32,
     pub worldtype: Worldtype,
     pub dimension: Dimension,
@@ -40,9 +40,9 @@ pub enum Dimension {
 
 pub enum Biome {}
 
-impl TerrainGenerator {
+impl WorldGenerator {
     pub fn new(seed: i32, worldtype: Worldtype) -> Self {
-        let mut terra_gen = TerrainGenerator {
+        let mut terra_gen = WorldGenerator {
             seed,
             worldtype: Worldtype::DEFAULT,
             dimension: Dimension::OVERWORLD,
@@ -91,7 +91,7 @@ impl TerrainGenerator {
                 for y in 0..CHUNK_HEIGHT {
                     if y > 30 {continue;}
                     let local_voxel_index = Chunk::voxel_index(x, y, z);
-                    chunk.blocktype_data[local_voxel_index] = 4;
+                    chunk.blocktype_data[local_voxel_index] = if random_range(0..40) == 0 { 19 } else { 4 };
                 }
             }
         }

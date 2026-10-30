@@ -1,1 +1,1 @@
-pub mod terrain_generator;
+pub mod world_generator;

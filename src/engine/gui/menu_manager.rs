@@ -1,18 +1,19 @@
 use glam::Mat4;
 use glfw::{Key, MouseButton, Window};
 
-use crate::engine::{
+use crate::{engine::{
     core::{
         input::Input,
         window::{self, GameWindow},
     }, entities::character_controller::{self, CharacterState}, gui::{
         basic_ui::{
-            UIAnchor::{AnchorBottomLeft, AnchorBottomMid, AnchorCentered, AnchorMidRight, AnchorTopLeft, AnchorTopMid, AnchorTopRight}, UIButton, UIElement, UILabel, UITexturedRect, UITransformC,
+            UIAnchor::{AnchorBottom, AnchorBottomLeft, AnchorCentered, AnchorRight, AnchorTop, AnchorTopLeft, AnchorTopRight}, UIElement, UITransformC,
         }, menu_manager::Menu::Closed,
     }, physics::aabb::AABB, resources::{
         resource_manager::{self, ResourceManager}, texture::{self, AtlasTile, UV},
     }, world::{self, world::World},
-};
+}, game::menus::{debug_screen::DebugScreen, game_hud::GameHUD, main_menu::MainMenu, pause_menu::EscapeMenu, world_loading_screen::WorldLoadingScreenMenu}};
+use crate::engine::gui::elements::{label::UILabel, tex_rect::UITexturedRect, button::UIButton};
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Menu {
@@ -30,7 +31,7 @@ pub trait UIMenu {}
 
 pub struct MenuManager {
     pub selected_menu: Menu,
-    last_menus: Vec<Menu>, // stores what menus where openened in order.
+    last_menus: Vec<Menu>,
 
     pub main_menu: MainMenu,
     escape_menu: EscapeMenu,
@@ -54,11 +55,31 @@ impl MenuManager {
         }
     }
 
-    pub fn rebuild_menus() {}
+    pub fn set_menu(&mut self, new_menu: Menu) {
+        self.selected_menu = new_menu;
+    }
 
-    pub fn update(&mut self, input: &Input, window: &mut GameWindow, window_transform: &UITransformC, character_controller: &CharacterState, world: Option<&World>) {
+    pub fn rebuild_menus(&mut self, window: &GameWindow) {
+        let window_transform = UITransformC::new(0, 0, window.width as u32, window.height as u32, AnchorTopLeft);
 
-        self.game_hud.update(character_controller, window_transform);
+        self.main_menu.realign(&window_transform);
+        self.escape_menu.realign(&window_transform);
+        self.world_loading_screen.realign(&window_transform);
+        self.game_hud.realign(&window_transform);
+        self.debug_screen.realign(&window_transform);
+    }
+
+    pub fn update(
+        &mut self,
+        input: &Input,
+        window: &mut GameWindow,
+        character_controller: &CharacterState,
+        world: Option<&World>
+    ) {
+
+        let window_transform = UITransformC::new(0, 0, window.width as u32, window.height as u32, AnchorTopLeft);
+
+        self.game_hud.update(character_controller, &window_transform);
 
         self.debug_screen.update(world, Some(character_controller));
 
@@ -107,303 +128,8 @@ impl MenuManager {
             
             _ => {},
         }
+
         self.debug_screen.render(resource_manager, self.selected_menu == Menu::Pause);
     }
 
-    pub fn set_menu(&mut self, new_menu: Menu) {
-        self.selected_menu = new_menu;
-    }
-}
-
-
-
-pub struct MainMenu {
-    version_label: UILabel,
-    pub button1: UIButton,
-    button2: UIButton,
-    background: UITexturedRect,
-}
-
-impl MainMenu {
-    fn new(window_transform: &UITransformC) -> Self {
-        let height_aspect = window_transform.w as f32 / window_transform.h as f32;
-        Self {
-            version_label: UILabel::new(
-                15,
-                900,
-                "Rusted-Voxels-v0.01",
-                AnchorMidRight,
-                window_transform,
-            ),
-            button1: UIButton::new(
-                0,
-                -200,
-                42 * 10,
-                13 * 10,
-                "Play",
-                AnchorCentered,
-                window_transform,
-            ),
-            button2: UIButton::new(
-                0,
-                200,
-                42 * 10,
-                13 * 10,
-                "Settings",
-                AnchorCentered,
-                window_transform,
-            ),
-            background: UITexturedRect::new(
-                0,
-                0,
-                window_transform.w as u32,
-                (window_transform.h as f32 * height_aspect) as u32,
-                &UV::new(0.0, 0.0, 10.0, 10.0),
-                AnchorTopLeft,
-                window_transform,
-            ),
-        }
-    }
-
-    fn update(&mut self, input: &Input, window: &GameWindow) -> Option<Menu> {
-        let mx = (window.fb_width as f32 * (input.mouse_x as f32 / window.width as f32)) as u32;
-        let my = (window.fb_height as f32 * (input.mouse_y as f32 / window.height as f32)) as u32;
-
-        self.button1
-            .cursor_update(mx, my, input.is_mouse_button_down(MouseButton::Left as i32));
-        self.button2.cursor_update(
-            mx,
-            my,
-            input.is_mouse_button_pressed(MouseButton::Left as i32),
-        );
-        if self.button1.pressed {
-            return Some(Menu::WorldLoadingScreen);
-        }
-        None
-    }
-
-    fn render(&self, resource_manager: &ResourceManager) {
-        resource_manager.background_bricks_tex.bind(0);
-        self.background.draw();
-        resource_manager.ui_tex.bind(0);
-        self.button1.draw();
-        self.button2.draw();
-        resource_manager.font_tex.bind(0);
-        self.button1.draw_text();
-        self.button2.draw_text();
-    }
-}
-
-pub struct EscapeMenu {
-    //label_game_state: UILabel,
-    button_continue: UIButton,
-    button_settings: UIButton,
-    button_world_options: UIButton,
-    button_leave: UIButton,
-}
-
-impl EscapeMenu {
-    fn new(window_transform: &UITransformC) -> EscapeMenu {
-        Self {
-            button_continue: UIButton::new(
-                0,
-                -300,
-                42 * 10,
-                13 * 10,
-                "Continue",
-                AnchorCentered,
-                window_transform,
-            ),
-            button_settings: UIButton::new(
-                0,
-                -100,
-                42 * 10,
-                13 * 10,
-                "Settings",
-                AnchorCentered,
-                window_transform,
-            ),
-            button_world_options: UIButton::new(
-                0,
-                100,
-                42 * 10,
-                13 * 10,
-                "World Options",
-                AnchorCentered,
-                window_transform,
-            ),
-            button_leave: UIButton::new(
-                0,
-                300,
-                42 * 10,
-                13 * 10,
-                "Leave",
-                AnchorCentered,
-                window_transform,
-            ),
-        }
-    }
-
-    fn render(&self, resource_manager: &ResourceManager) {
-        self.button_continue.draw();
-        self.button_settings.draw();
-        self.button_world_options.draw();
-        self.button_leave.draw();
-        resource_manager.font_tex.bind(0);
-        self.button_continue.draw_text();
-        self.button_settings.draw_text();
-        self.button_world_options.draw_text();
-        self.button_leave.draw_text();
-    }
-}
-
-struct WorldLoadingScreenMenu {
-    background: UITexturedRect,
-    label: UILabel,
-}
-
-impl WorldLoadingScreenMenu {
-    pub fn new(window_transform: &UITransformC) -> Self {
-        let height_aspect = window_transform.w as f32 / window_transform.h as f32;
-        let mut s = Self {
-            background: UITexturedRect::new(
-                0,
-                0,
-                window_transform.w as u32,
-                (window_transform.h as f32 * height_aspect) as u32,
-                &UV::new(0.0, 0.0, 10.0, 10.0),
-                AnchorTopLeft,
-                window_transform,
-            ),
-            label: UILabel::new(
-                0,
-                0,
-                "label.loading_progress",
-                AnchorCentered,
-                window_transform,
-            ),
-        };
-        s
-    }
-
-    fn draw(&self, resource_manager: &ResourceManager) {
-        resource_manager.background_tex.bind(0);
-        self.background.draw();
-        resource_manager.font_tex.bind(0);
-        self.label.draw();
-    }
-
-    fn update(&mut self, chunk_count: u32) {
-        self.label.build_mesh(
-            &format!(
-                "Loaded Chunks: {}/{}",
-                chunk_count,
-                world::world::RENDER_AREA - 100
-            ),
-        );
-    }
-}
-
-struct GameHUD {
-    crosshair: UITexturedRect,
-    hotbar: UITexturedRect,
-    selected_slot: UITexturedRect,
-    special_slot_one: UITexturedRect,
-    special_slot_two: UITexturedRect,
-    health_bar: UITexturedRect,
-}
-// TODO: Labels should support newlines
-struct DebugScreen {
-    version_label: UILabel,
-    coord_label: UILabel,
-    chunk_info_label: UILabel,
-}
-
-impl GameHUD {
-    fn new(window_transform: &UITransformC) -> Self {
-        let tex_size = 256.0;
-        let slot_size = 90; // 80
-        let slot_half = slot_size / 2;
-
-        // TODO: remove all "mid" from UIAnchor names, AnchorBottomMid -> AnchorBottom
-
-        Self {
-            crosshair: UITexturedRect::new(0, 0, 40, 40, &UV::new(0.0, 0.0, 1.0, 1.0), AnchorCentered, window_transform),
-            hotbar: UITexturedRect::new(0, -10, slot_size * 10, slot_size, &UV::new(96.0 / tex_size, 0.0 / tex_size, tex_size / tex_size, 16.0 / tex_size), AnchorBottomMid, window_transform),
-            selected_slot: UITexturedRect::new(-(4 * slot_size as i32 + slot_half as i32), -10, slot_size, slot_size, &UV::new(96.0 / tex_size, 16.0 / tex_size, 112.0 / tex_size, 32.0 / tex_size), AnchorBottomMid, window_transform),
-            special_slot_one: UITexturedRect::new(-(slot_half as i32 * 3), (slot_half) as i32, slot_size, slot_size, &UV::new(112.0 / tex_size, 16.0 / tex_size, 128.0 / tex_size, 32.0 / tex_size), AnchorTopRight, window_transform),
-            special_slot_two: UITexturedRect::new(-(slot_half as i32), (slot_size + slot_half) as i32, slot_size, slot_size, &UV::new(112.0 / tex_size, 16.0 / tex_size, 128.0 / tex_size, 32.0 / tex_size), AnchorTopRight, window_transform),
-            health_bar: UITexturedRect::new(-(5 * slot_half as i32), -(10 + slot_size as i32), slot_size * 5, slot_size, &UV::new(98.0 / tex_size, 36.0 / tex_size, 110.0 / tex_size, 47.0 / tex_size), AnchorBottomMid, window_transform),
-            
-        }
-    }
-
-    fn update(&mut self, character_controller: &CharacterState, window_transform: &UITransformC) {
-        let tex_size = 256.0;
-        let slot_size: i32 = 90; // 80
-
-        self.selected_slot.model.destroy();
-        self.selected_slot = UITexturedRect::new((-(4 * slot_size + slot_size / 2) + character_controller.selected_slot as i32 * slot_size), -10, slot_size as u32, slot_size as u32, &UV::new(96.0 / tex_size, 16.0 / tex_size, 112.0 / tex_size, 32.0 / tex_size), AnchorBottomMid, window_transform);
-    }
-
-    fn draw(&self, resource_manager: &ResourceManager) {
-        resource_manager.crosshair_tex.bind(0);
-        unsafe {gl::BlendFunc(gl::ONE_MINUS_DST_COLOR, gl::ZERO)};
-
-        self.crosshair.draw();
-
-        unsafe {gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA)};
-        resource_manager.ui_tex.bind(0);
-
-        self.hotbar.draw();
-        self.selected_slot.draw();
-        self.special_slot_one.draw();
-        self.special_slot_two.draw();
-        //self.health_bar.draw();
-    }
-}
-
-impl DebugScreen {
-    fn new(window_transform: &UITransformC) -> Self {
-        Self {
-            version_label: UILabel::new(10, -10, "Rusted-Voxels-v0.01", AnchorBottomLeft, &window_transform),
-            coord_label: UILabel::new(10, 20, "x: 0.000, y: 0.000, z: 0.000", AnchorTopLeft, &window_transform),
-            chunk_info_label: UILabel::new(10, 100, "Chunks Loaded: _", AnchorTopLeft, &window_transform),
-        }
-    }
-
-    fn update(&mut self, world: Option<&World>, character_controller: Option<&CharacterState>) {
-
-        if let Some(world) = world {
-            self.chunk_info_label.build_mesh(
-                &format!(
-                    "Chunks Generating: {}, Chunks Loaded: {},",
-                    world.chunk_manager.chunks_generating,
-                    world.chunk_manager.chunks_loaded,
-                )
-            );
-        }
-
-        if let Some(character_controller) = character_controller {
-            self.coord_label.build_mesh(
-                &format!(
-                    "x: {:.3}, y: {:.3}, z: {:.3}",
-                    character_controller.position.x,
-                    character_controller.position.y + AABB::HUMANOID.min.y,
-                    character_controller.position.z
-                )
-            );
-        }
-    }
-
-    fn render(&self, resource_manager: &ResourceManager, in_world: bool) {
-        resource_manager.font_tex.bind(0);
-
-        if in_world {
-            self.chunk_info_label.draw();
-            self.coord_label.draw();
-        }
-
-        self.version_label.draw();
-    }
 }

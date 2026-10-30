@@ -3,20 +3,22 @@ use std::{ops::Add, sync::{Arc, RwLock, mpsc::TryRecvError}};
 use glam::*;
 use rand::{rand_core::block, random_range, seq::IndexedRandom};
 
-use crate::engine::{blocks::block_model::BlockModel, core::worker::Worker, world::{chunk::{CHUNK_HEIGHT, CHUNK_WIDTH}, chunk_manager::ChunkManager}}
+use crate::engine::{blocks::block_model::BlockModel, core::worker::Worker, world::{chunk::{CHUNK_HEIGHT, CHUNK_WIDTH}, chunk_manager::{self, ChunkManager}, chunk_region::{self, ChunkRegion}, generation::world_generator::Dimension, lighting_system::{self, QueuedLight}, voxel_coordinates::ChunkCoord}}
 ;
 
-pub const RENDER_DISTANCE: u32 = 12;
+pub const RENDER_DISTANCE: u32 = 20;
 pub const RENDER_AREA: u32 = RENDER_DISTANCE * RENDER_DISTANCE;
 
 pub struct World {
     pub chunk_manager: ChunkManager,
+    pub dimension: Dimension,
 }
 
 impl World {
     pub fn new() -> Self {
         Self {
             chunk_manager: ChunkManager::new(),
+            dimension: Dimension::OVERWORLD,
         }
     }
 
@@ -57,6 +59,26 @@ impl World {
             let mut place_pos = IVec3::new(gx, gy, gz);
 
             self.mark_chunk_area_dirty(place_pos, place_pos);
+
+        } else {return;}
+
+        if block == 2 || block == 0 {
+            let coord = ChunkCoord::new(cx, cz);
+            if let Some(mut region) = ChunkRegion::take_chunk_region(&mut self.chunk_manager, &coord) {
+                let chunk = self.chunk_manager.get_avl_chunk_mut(cx, cz).unwrap();
+                let lx = gx.rem_euclid(CHUNK_WIDTH);
+                let lz = gz.rem_euclid(CHUNK_WIDTH);
+                //lighting_system::bake_indirect_light(chunk, &mut region, Some(QueuedLight::new(lx + 1, gy, lz, if block == 0 {chunk.get_light(lx + 1, gy, lz)} else {15})));
+                //lighting_system::bake_indirect_light(chunk, &mut region, Some(QueuedLight::new(lx - 1, gy, lz, if block == 0 {chunk.get_light(lx - 1, gy, lz)} else {15})));
+                //lighting_system::bake_indirect_light(chunk, &mut region, Some(QueuedLight::new(lx, gy + 1, lz, if block == 0 {chunk.get_light(lx, gy + 1, lz)} else {15})));
+                //lighting_system::bake_indirect_light(chunk, &mut region, Some(QueuedLight::new(lx, gy - 1, lz, if block == 0 {chunk.get_light(lx, gy - 1, lz)} else {15})));
+                //lighting_system::bake_indirect_light(chunk, &mut region, Some(QueuedLight::new(lx, gy, lz + 1, if block == 0 {chunk.get_light(lx, gy, lz + 1)} else {15})));
+                //lighting_system::bake_indirect_light(chunk, &mut region, Some(QueuedLight::new(lx, gy, lz - 1, if block == 0 {chunk.get_light(lx, gy, lz - 1)} else {15})));
+                ChunkRegion::insert_chunk_region(&mut self.chunk_manager, &coord, region);
+                let mut min = IVec3::new((cx-1) * CHUNK_WIDTH, gy, (cz-1) * CHUNK_WIDTH);
+                let mut max = IVec3::new((cx+1) * CHUNK_WIDTH, gy, (cz+1) * CHUNK_WIDTH);
+                self.mark_chunk_area_dirty(min, max);
+            }
         }
     }
 

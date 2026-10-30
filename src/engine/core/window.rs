@@ -3,7 +3,7 @@ use std::time::Instant;
 use glam::Mat4;
 use glfw::*;
 
-use crate::engine::{core::input::Input, rendering::camera::Camera};
+use crate::engine::{core::input::Input, gui::menu_manager::{self, MenuManager}, rendering::camera::Camera};
 
 pub struct GameWindow {
     pub handle: PWindow,
@@ -107,7 +107,7 @@ impl GameWindow {
         self.handle.set_cursor_mode(mode)
     }
 
-    pub fn poll_events(&mut self, input: &mut Input, camera: &mut Camera) {
+    pub fn poll_events(&mut self, input: &mut Input, camera: &mut Camera, menu_manager: &mut MenuManager) {
         self.glfw.poll_events();
 
         let now = Instant::now();
@@ -122,6 +122,7 @@ impl GameWindow {
                 WindowEvent::Size(w, h) => {
                     self.width = w as u32;
                     self.height = h as u32;
+                    menu_manager.rebuild_menus(&self);
                 }
 
                 WindowEvent::FramebufferSize(w, h) => {
@@ -152,11 +153,11 @@ impl GameWindow {
     fn calculate_ui_projection(&self) -> Mat4 {
         glam::camera::rh::proj::opengl::orthographic(
             0.0,
-            self.fb_width as f32,
-            self.fb_height as f32,
+            self.width as f32,
+            self.height as f32,
             0.0,
-            -1.0,
-            1.0,
+            -1000.0,
+            1000.0,
         )
     }
 }

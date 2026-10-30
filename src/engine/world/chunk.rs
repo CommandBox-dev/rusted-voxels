@@ -1,5 +1,7 @@
 use std::alloc::System;
 
+use glam::Vec3;
+
 use crate::engine::world::{chunk_region::ChunkRegion, chunk_state::GenerationStep, voxel_coordinates::{BlockCoord, ChunkCoord}, world::World};
 
 pub static CHUNK_WIDTH: i32 = 16;
@@ -51,7 +53,7 @@ impl Chunk {
             dirty: false,
 
             blocktype_data: Box::new([0; CHUNK_VOLUME as usize]),
-            light_data: Box::new([8; CHUNK_VOLUME as usize]),
+            light_data: Box::new([0; CHUNK_VOLUME as usize]),
 
             uptime: 0,
 
@@ -386,4 +388,18 @@ impl Chunk {
         self.set_light(lx, ly, lz, light)
     }
 
+}
+
+pub struct TickedBlock {
+    block: u32,
+    position: Vec3,
+}
+
+impl TickedBlock {
+    pub fn new(block: u32, position: Vec3) -> Self {
+        Self {
+            block,
+            position,
+        }
+    }
 }

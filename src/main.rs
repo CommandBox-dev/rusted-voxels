@@ -15,17 +15,11 @@ use crate::engine::core::worker::Worker;
 use crate::engine::entities::character_controller::CharacterState;
 use crate::engine::gui::basic_ui::UIAnchor::AnchorBottomLeft;
 use crate::engine::gui::basic_ui::UIAnchor::AnchorCentered;
-use crate::engine::gui::basic_ui::UIAnchor::AnchorMidLeft;
-use crate::engine::gui::basic_ui::UIAnchor::AnchorMidRight;
+use crate::engine::gui::basic_ui::UIAnchor::AnchorLeft;
+use crate::engine::gui::basic_ui::UIAnchor::AnchorRight;
 use crate::engine::gui::basic_ui::UIAnchor::AnchorTopLeft;
-use crate::engine::gui::basic_ui::UIAnchor::AnchorTopMid;
+use crate::engine::gui::basic_ui::UIAnchor::AnchorTop;
 use crate::engine::gui::basic_ui::UIAnchor::AnchorTopRight;
-use crate::engine::gui::basic_ui::UIButton;
-use crate::engine::gui::basic_ui::UICheckBox;
-use crate::engine::gui::basic_ui::UIContainer;
-use crate::engine::gui::basic_ui::UIElement;
-use crate::engine::gui::basic_ui::UIFrame;
-use crate::engine::gui::basic_ui::UILabel;
 use crate::engine::gui::basic_ui::UITransformC;
 use crate::engine::gui::menu_manager;
 use crate::engine::gui::menu_manager::Menu;
@@ -129,7 +123,6 @@ fn main() {
         75.0,
     );
 
-    let window_transform = UITransformC::new(0, 0, window.width as u32, window.height as u32, AnchorTopLeft);
     //audio_manager.play_sound_flat(resource_manager.white_grass_music.clone());
 
     let mut vao_wireframe = 0;
@@ -174,7 +167,7 @@ fn main() {
 
 
     'game_loop: while !window.should_close() {
-        window.poll_events(&mut input, &mut camera);
+        window.poll_events(&mut input, &mut camera, &mut menu_manager);
 
         if menu_manager.main_menu.button1.pressed && world.is_none() {
             world = Some(World::new());
@@ -211,7 +204,7 @@ fn main() {
             }
         }
 
-        menu_manager.update(&input, &mut window, &window_transform, &character_controller, world.as_ref());
+        menu_manager.update(&input, &mut window, &character_controller, world.as_ref());
 
         rendering_server.render(
             &resource_manager,

@@ -63,6 +63,8 @@ pub fn bake_indirect_light(chunk: &mut Chunk, region: &mut ChunkRegion) {
     }
 
     while let Some(light) = flood_light.pop() {
+        if light.value == 0 {continue;}
+
         chunk.set_light_global(region, light.x, light.y, light.z, light.value);
 
         let next = light.value - 1;
@@ -107,9 +109,84 @@ pub fn bake_indirect_light(chunk: &mut Chunk, region: &mut ChunkRegion) {
 
 }
 
-struct QueuedLight {
+pub fn update_light(chunk: &mut Chunk, region: &mut ChunkRegion, placed_light: QueuedLight) {
+    
+    let mut flood_light: Vec<QueuedLight> = Vec::new();
+
+    if placed_light.value != 0 {
+        flood_light.push(placed_light);
+
+        while let Some(light) = flood_light.pop() {
+            if light.value == 0 {continue;}
+            
+            chunk.set_light_global(region, light.x, light.y, light.z, light.value);
+
+            let next = light.value - 1;
+            if next == 0 {continue;}
+
+            if chunk.get_block_global(region, light.x + 1, light.y, light.z) == 0
+            && chunk.get_light_global(region, light.x + 1, light.y, light.z) < next 
+            {
+                flood_light.push(QueuedLight { x: light.x + 1, y: light.y, z: light.z, value: next });
+            }
+
+            if chunk.get_block_global(region, light.x - 1, light.y, light.z) == 0 
+            && chunk.get_light_global(region, light.x - 1, light.y, light.z) < next 
+            {
+                flood_light.push(QueuedLight { x: light.x - 1, y: light.y, z: light.z, value: next });
+            }
+
+            if chunk.get_block_global(region, light.x, light.y + 1, light.z) == 0
+            && chunk.get_light_global(region, light.x, light.y + 1, light.z) < next
+            {
+                flood_light.push(QueuedLight { x: light.x, y: light.y + 1, z: light.z, value: next });
+            }
+
+            if chunk.get_block_global(region, light.x, light.y - 1, light.z) == 0
+            && chunk.get_light_global(region, light.x, light.y - 1, light.z) < next 
+            {
+                flood_light.push(QueuedLight { x: light.x, y: light.y - 1, z: light.z, value: next });
+            }
+
+            if chunk.get_block_global(region, light.x, light.y, light.z + 1) == 0
+            && chunk.get_light_global(region, light.x, light.y, light.z + 1) < next
+            {
+                flood_light.push(QueuedLight { x: light.x, y: light.y, z: light.z + 1, value: next });
+            }
+
+            if chunk.get_block_global(region, light.x, light.y, light.z - 1) == 0
+            && chunk.get_light_global(region, light.x, light.y, light.z - 1) < next
+            {
+                flood_light.push(QueuedLight { x: light.x, y: light.y, z: light.z - 1, value: next });
+            }
+        }
+    } else {
+
+    }
+
+}
+
+pub struct QueuedLight {
     x: i32,
     y: i32,
     z: i32,
     value: u32,
+}
+
+pub struct QueuedDark {
+    x: i32,
+    y: i32,
+    z: i32,
+    value: u32,
+}
+
+impl QueuedLight {
+    pub fn new(x: i32, y: i32, z: i32, brightness: u32) -> Self {
+        Self {
+            x,
+            y,
+            z,
+            value: brightness,
+        }
+    }
 }

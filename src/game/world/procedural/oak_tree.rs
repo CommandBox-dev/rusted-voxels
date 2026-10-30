@@ -1,19 +1,22 @@
 use rand::random_range;
 
-use crate::{engine::world::{chunk::{CHUNK_WIDTH, Chunk}, chunk_region::ChunkRegion, structure::{ProceduralStructure, Structure}}, game::terrain_features::oak_tree};
+use crate::{engine::world::{chunk::{CHUNK_WIDTH, Chunk}, chunk_region::ChunkRegion, structure::{ProceduralStructure, Structure}}};
 
 pub struct OakTree {}
 
 impl Structure for OakTree {
 
     fn generate(&self, chunk: &mut Chunk, region: &mut ChunkRegion) {
+
+        let apple_tree = random_range(0..35) == 0;
+
         let lx = random_range(0..CHUNK_WIDTH);
         let lz = random_range(0..CHUNK_WIDTH);
 
         let top = chunk.get_top_block(lx, lz);
         let top_block = top.0;
-        if top_block == 17 {return;}
         let top = top.1;
+        if top_block == 17 || top_block == 21 {return;} // &&
 
 
         let w = 1;
@@ -27,11 +30,19 @@ impl Structure for OakTree {
             }
         }
 
+        for x in lx-w-1..lx+w+1 {
+            for z in lz-w-1..lz+w+1 {
+                chunk.set_block_global(region, x, top as i32 + 1, z, 20);
+                for y in top-1..top+1 {
+                }
+            }
+        }
+
         for i in 1..random_range(3..5) {
             chunk.set_block_global(region, lx-1+random_range(0..=2), top as i32, lz-1+random_range(0..=2), 16);
         }
 
-        oak_tree::fill_sphere(lx, (top + h) as i32, lz, 4, vec![17], chunk, region);
+        fill_sphere(lx, (top + h) as i32, lz, 4, vec![17, if apple_tree && random_range(0..20) == 0 {21} else {17}], chunk, region);
     }
 
 }

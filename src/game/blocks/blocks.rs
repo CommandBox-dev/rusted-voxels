@@ -1,7 +1,9 @@
-// Collection of all blocktypes contained in the base game
-
-struct GrassBlock {
-    name: String,
+pub enum Blocktype {
+    Air,
+    Grass,
+    Stone,
+    Sand,
+    OakLog,
+    Leaves,
+    CompressedStone
 }
-
-//impl BlockScript for GrassBlock {}
