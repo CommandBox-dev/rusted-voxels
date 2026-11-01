@@ -3,6 +3,7 @@ use std::ops::Add;
 use glam::{IVec3, Vec2, Vec3};
 use glfw::*;
 
+use crate::engine::animation::animation_player::PlayingAnimation;
 use crate::engine::audio::audio_server::AudioServer;
 use crate::engine::core::input::Input;
 use crate::engine::core::window::GameWindow;
@@ -42,6 +43,7 @@ impl CharacterState {
         menu_manager: &MenuManager,
         audio_manager: &mut AudioServer,
         resource_manager: &ResourceManager,
+        viewmodel_anim: &mut PlayingAnimation,
     ) {
         let result = raycast::cast_ray(camera.position, camera.front, 6.0, &mut world);
         self.target_block = result.hit_position;
@@ -50,6 +52,7 @@ impl CharacterState {
         if menu_manager.selected_menu == Menu::Closed
             && input.is_mouse_button_pressed(MouseButton::Left as i32)
         {
+            viewmodel_anim.time = 0.0;
             if result.hit {
                 world.set_block(
                     result.hit_position.x,
@@ -66,6 +69,7 @@ impl CharacterState {
             && input.is_mouse_button_pressed(MouseButton::Right as i32)
         {
             if result.hit {
+                viewmodel_anim.time = 0.0;
                 world.set_block(
                     result.hit_position.x + result.hit_normal.x,
                     result.hit_position.y + result.hit_normal.y,

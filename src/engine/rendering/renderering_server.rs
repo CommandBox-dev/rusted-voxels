@@ -4,11 +4,9 @@ use glam::{Mat4, Quat, Vec3};
 use glfw::MouseButton;
 
 use crate::engine::{
-    blocks::block_model::BlockModel, core::{input::Input, window::GameWindow}, entities::character_controller::CharacterState, gui::{
-        elements::{button::UIButton, check_box::UICheckBox, label::UILabel},
-        basic_ui::UIElement,
-        menu_manager::{self, Menu, MenuManager},
-    }, rendering::{self, camera::Camera, chunk_mesher}, resources::{
+    animation::animation::Bone, blocks::block_model::BlockModel, core::{input::Input, window::GameWindow}, entities::character_controller::CharacterState, gui::{
+        basic_ui::UIElement, elements::{button::UIButton, check_box::UICheckBox, label::UILabel}, menu_manager::{self, Menu, MenuManager},
+    }, rendering::{self, camera::Camera, chunk_mesher, mesh::{self, BasicMesh}}, resources::{
         resource_manager::{self, ResourceManager},
         texture::*,
     }, world::world::World,
@@ -137,12 +135,14 @@ impl RenderingServer {
         ui_proj: &Mat4,
         input: &Input,
         menu_manager: &MenuManager,
-        vao_debug: u32,
+        block_cursor: &BasicMesh,
         window: &GameWindow,
+        bone: &Bone,
+        entity_mesh: &BasicMesh,
     ) {
 
         self.render_solid(resource_manager, camera, world);
-        self.render_transparent(resource_manager, camera, character_controller, vao_debug);
+        self.render_transparent(resource_manager, camera, character_controller, block_cursor, entity_mesh);
 
         unsafe {
 
@@ -154,38 +154,44 @@ impl RenderingServer {
                 
                 let block_mesh = &resource_manager.block_meshes[slot];
                 let item_mesh = &resource_manager.item_meshes[item_slot];
+                let sword_mesh = &resource_manager.item_meshes[3];
+
                 //gl::Disable(gl::DEPTH_TEST);
                 gl::Disable(gl::CULL_FACE);
 
                 resource_manager.base_shader.bind();
                 resource_manager.tile_atlas.bind(0);
-                //resource_manager.item_atlas.bind(0);
+                resource_manager.item_atlas.bind(0);
 
                 let view =  Mat4::IDENTITY;
-                let model = Mat4::from_scale_rotation_translation(
-                    Vec3::splat(0.6), // scale
-                    Quat::from_euler(glam::EulerRot::XYZ, (15.0_f32).to_radians(), 45.0_f32.to_radians(), 0.0), // rotation
-                    Vec3::new(1.0, -0.6, -1.3), // position
+                let mut model = Mat4::from_scale_rotation_translation(
+                    Vec3::splat(1.0), // scale // 0.6
+                    Quat::from_euler(glam::EulerRot::XYZ, 0.0, -45.0_f32.to_radians(), 0.0), // from_euler(glam::EulerRot::XYZ, (15.0_f32).to_radians(), 45.0_f32.to_radians(), 0.0), // rotation
+                    //Vec3::new(1.0, -0.6, -1.3), // position
+                    Vec3::new(0.5, -0.9, -1.0),
                 );
+
+                let model = model * bone.global_transform;
 
                 gl::UniformMatrix4fv(self.base_view_loc, 1, gl::FALSE, view.to_cols_array().as_ptr());
                 gl::UniformMatrix4fv(self.base_proj_loc, 1, gl::FALSE, camera.projection.to_cols_array().as_ptr());
                 gl::UniformMatrix4fv(self.base_model_loc, 1, gl::FALSE, model.to_cols_array().as_ptr());
 
-                gl::BindVertexArray(block_mesh.vao);
-                gl::DrawArrays(gl::TRIANGLES, 0, block_mesh.vertex_count as i32);
+                gl::BindVertexArray(sword_mesh.vao);
+                gl::DrawArrays(gl::TRIANGLES, 0, sword_mesh.vertex_count as i32);
 
 
                 // 3D Item
                 resource_manager.item_atlas.bind(0);
                 gl::BindVertexArray(item_mesh.vao);
 
-                let model = Mat4::from_scale_rotation_translation(
+                /*let model = Mat4::from_scale_rotation_translation(
                     Vec3::splat(2.0), // scale
                     Quat::IDENTITY,
                     Vec3::new(0.0, 80.0, 0.0), // position
-                );
-                gl::UniformMatrix4fv(self.base_model_loc, 1, gl::FALSE, model.to_cols_array().as_ptr());
+                );*/
+
+                gl::UniformMatrix4fv(self.base_model_loc, 1, gl::FALSE, bone.global_transform.to_cols_array().as_ptr());
                 gl::UniformMatrix4fv(self.base_view_loc, 1, gl::FALSE, camera.view.to_cols_array().as_ptr());
                 gl::DrawArrays(gl::TRIANGLES, 0, item_mesh.vertex_count as i32);
 
@@ -216,7 +222,7 @@ impl RenderingServer {
                 resource_manager.base_shader.bind();
                 resource_manager.tile_atlas.bind(0);
 
-                let slot_size = 90; // 80
+                let slot_size = 100; // 80
                 let slot_half = (slot_size / 2) as f32;
                 
                 let view = glam::camera::rh::view::look_at_mat4( //Mat4::IDENTITY.to_cols_array().as_ptr()
@@ -232,7 +238,7 @@ impl RenderingServer {
                     let block_mesh = &resource_manager.block_meshes[slot];
                     gl::BindVertexArray(block_mesh.vao);
                     let model = Mat4::from_scale_rotation_translation(
-                        Vec3::splat(slot_size as f32 * 0.45), // scale
+                        Vec3::splat(slot_size as f32 * 0.35), // * 0.45 // scale
                         Quat::from_euler(glam::EulerRot::XYZ, (180.0_f32 + 45.0).to_radians(), 45.0_f32.to_radians(), 0.0), // rotation
                         Vec3::new(window.width as f32 / 2.0 - slot_half * 10.0 + slot_half + (slot_size * slot) as f32, window.height as f32 - 10.0 - slot_half, 0.0), // position
                     );
@@ -280,7 +286,8 @@ impl RenderingServer {
         resource_manager: &ResourceManager,
         camera: &Camera,
         character_controller: &CharacterState,
-        vao_debug: u32,
+        block_cursor: &BasicMesh,
+        entity_mesh: &BasicMesh,
     ) {
         unsafe {
             // debug wireframe mesh
@@ -300,12 +307,18 @@ impl RenderingServer {
             gl::Uniform4f(self.wire_face_color_loc, 1.0, 1.0, 1.0, 0.15);
             gl::Uniform1f(self.wire_line_width_loc, 0.02);
             
-            gl::UniformMatrix4fv(self.wire_model_loc, 1, gl::FALSE, model.to_cols_array().as_ptr());
             gl::UniformMatrix4fv(self.wire_view_loc, 1, gl::FALSE, camera.view.to_cols_array().as_ptr());
             gl::UniformMatrix4fv(self.wire_proj_loc, 1, gl::FALSE, camera.projection.to_cols_array().as_ptr());
             
-            gl::BindVertexArray(vao_debug);
-            gl::DrawArrays(gl::TRIANGLES, 0, crate::VERTICES.len() as i32);
+            gl::UniformMatrix4fv(self.wire_model_loc, 1, gl::FALSE, model.to_cols_array().as_ptr());
+            gl::BindVertexArray(block_cursor.vao);
+            gl::DrawArrays(gl::TRIANGLES, 0, block_cursor.vertex_count as i32);
+
+            let mut target_pos = Vec3::new(0.0, 80.0, 0.0);
+            let mut model = Mat4::from_translation(target_pos);
+            gl::UniformMatrix4fv(self.wire_model_loc, 1, gl::FALSE, model.to_cols_array().as_ptr());
+            gl::BindVertexArray(entity_mesh.vao);
+            gl::DrawArrays(gl::TRIANGLES, 0, entity_mesh.vertex_count as i32);
 
             gl::Enable(gl::CULL_FACE);
         }

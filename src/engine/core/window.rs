@@ -21,6 +21,7 @@ pub struct GameWindow {
     // viewport is a rendering region on framebuffer
     // ui, mouse and window should use window coordinate system
     // rendering, viewport and rendering resolutions should use framebuffer pixels coordinate system
+    
     pub time: f32,
     pub delta: f32,
     start_time: Instant,

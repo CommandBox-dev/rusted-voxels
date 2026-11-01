@@ -100,6 +100,8 @@ impl ResourceManager {
         let forest_grass = manual.tile_atlas.get_tile(String::from("forest_grass"));
         let bush = manual.tile_atlas.get_tile(String::from("bush"));
         let apple_leaves = manual.tile_atlas.get_tile(String::from("leaves_apple"));
+        let rock = manual.tile_atlas.get_tile(String::from("cracked_stone_floor"));
+        let compressed = manual.tile_atlas.get_tile(String::from("compressed_stone"));
 
         manual.block_models = vec![
             BlockModel::new_cube(cobblestone),
@@ -126,6 +128,8 @@ impl ResourceManager {
             BlockModel::new_cube(forest_grass),
             BlockModel::new_cube(bush),
             BlockModel::new_cube(apple_leaves),
+            BlockModel::new_cube(rock),
+            BlockModel::new_cube(compressed),
         ];
 
         for model in &manual.block_models {

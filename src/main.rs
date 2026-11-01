@@ -3,10 +3,15 @@
 mod engine;
 mod game;
 
+use glam::Quat;
 use glam::{IVec3, Mat4, Vec2, Vec3};
 use glfw::{Action, Context, Key, MouseButton, ffi::glfwGetFramebufferSize};
 use rand::rand_core::utils::Word;
 
+use crate::engine::animation::animation::PlaybackMode::{self, Once, PingPong};
+use crate::engine::animation::animation::{Animation, AnimationTrack, Bone, QuatKeyframe, VecKeyframe};
+use crate::engine::animation::animation_player::{self, AnimationPlayer, PlayingAnimation};
+use crate::engine::animation::skeleton::{self, Skeleton};
 use crate::engine::audio::audio_server::AudioServer;
 use crate::engine::blocks::block_model::*;
 use crate::engine::core::input::Input;
@@ -29,7 +34,8 @@ use crate::engine::physics::aabb::move_and_collide;
 use crate::engine::physics::aabb::*;
 use crate::engine::physics::aabb::*;
 use crate::engine::physics::*;
-use crate::engine::rendering::camera::*;
+use crate::engine::rendering::mesh::BasicMesh;
+use crate::engine::rendering::{camera::*, mesh};
 use crate::engine::rendering::chunk_mesher;
 use crate::engine::rendering::renderering_server::RenderingServer;
 use crate::engine::resources::resource_manager::ResourceManager;
@@ -37,83 +43,28 @@ use crate::engine::resources::shader::*;
 use crate::engine::resources::texture::*;
 use crate::engine::world::chunk::*;
 use crate::engine::world::chunk_manager::ChunkLoader;
+use crate::engine::world::generation::world_generator::TerrainGenerator;
 use crate::engine::world::voxel_coordinates::BlockCoord;
 use crate::engine::world::world::*;
 use crate::engine::*;
-
-pub const VERTICES: [f32; 108 + 72] = [
-    // right
-    1.0, 0.0, 1.0, 1.0, 0.0,
-    1.0, 0.0, 0.0, 0.0, 0.0,
-    1.0, 1.0, 0.0, 0.0, 1.0,
-
-    1.0, 0.0, 1.0, 1.0, 0.0,
-    1.0, 1.0, 0.0, 0.0, 1.0,
-    1.0, 1.0, 1.0, 1.0, 1.0,
-
-    // left
-    0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 1.0, 1.0, 0.0,
-    0.0, 1.0, 1.0, 1.0, 1.0,
-
-    0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 1.0, 1.0, 1.0, 1.0,
-    0.0, 1.0, 0.0, 0.0, 1.0,
-
-    // top
-    0.0, 1.0, 1.0, 0.0, 0.0,
-    1.0, 1.0, 1.0, 1.0, 0.0,
-    1.0, 1.0, 0.0, 1.0, 1.0,
-
-    0.0, 1.0, 1.0, 0.0, 0.0,
-    1.0, 1.0, 0.0, 1.0, 1.0,
-    0.0, 1.0, 0.0, 0.0, 1.0,
-
-    // bottom
-    0.0, 0.0, 0.0, 0.0, 0.0,
-    1.0, 0.0, 0.0, 1.0, 0.0,
-    1.0, 0.0, 1.0, 1.0, 1.0,
-
-    0.0, 0.0, 0.0, 0.0, 0.0,
-    1.0, 0.0, 1.0, 1.0, 1.0,
-    0.0, 0.0, 1.0, 0.0, 1.0,
-
-    // front
-    0.0, 0.0, 1.0, 0.0, 0.0,
-    1.0, 0.0, 1.0, 1.0, 0.0,
-    1.0, 1.0, 1.0, 1.0, 1.0,
-
-    0.0, 0.0, 1.0, 0.0, 0.0,
-    1.0, 1.0, 1.0, 1.0, 1.0,
-    0.0, 1.0, 1.0, 0.0, 1.0,
-
-    // back
-    1.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 1.0, 0.0,
-    0.0, 1.0, 0.0, 1.0, 1.0,
-
-    1.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 1.0, 0.0, 1.0, 1.0,
-    1.0, 1.0, 0.0, 0.0, 1.0,
-];
+use crate::game::world::generation::Dimension::Flat;
+use crate::game::world::terrain::flat::{FlatGen, TerrainLayer};
 
 fn main() {
     let mut window = GameWindow::new("rusted-voxels", 1920, 1080);
     let mut input = Input::new(&window);
 
     let mut resource_manager = ResourceManager::new();
-    let mut audio_manager = AudioServer::new();
     let mut menu_manager = MenuManager::new(&window);
+    let mut audio_manager = AudioServer::new();
     let mut rendering_server = RenderingServer::new();
+    let mut animation_player = AnimationPlayer::new();
     
-    menu_manager.set_menu(Menu::Main);
-    rendering_server.update_shader_unif_loc(&resource_manager);
-
     let worker = Worker::new(8);
     let meshing_worker = Worker::new(5);
+
     let mut world: Option<World> = None;
     let mut character_controller = CharacterState::new();
-
     let mut camera = Camera::new(
         Vec3::ZERO,
         0.0,
@@ -122,49 +73,73 @@ fn main() {
         window.fb_height as u32,
         75.0,
     );
+    
+    menu_manager.set_menu(Menu::Main);
+    rendering_server.update_shader_unif_loc(&resource_manager);
+
+    // block animation
+    let position_timeline: Vec<VecKeyframe> = vec![];
+    let rotation_timeline: Vec<QuatKeyframe> = vec![
+        QuatKeyframe::new(Vec3::new(0.0, 0.0, 0.0), 0.0),
+        QuatKeyframe::new(Vec3::new(-45.0, 0.0, -45.0), 0.3),
+        QuatKeyframe::new(Vec3::new(-45.0, 0.0, -45.0), 0.5),
+        QuatKeyframe::new(Vec3::new(0.0, 0.0, 0.0), 1.0),
+    ];
+    let scale_timeline: Vec<VecKeyframe> = vec![];
+    // sword animation
+    let position_timeline: Vec<VecKeyframe> = vec![
+        VecKeyframe::new(Vec3::new(0.0, 0.0, 0.0), 0.0)
+    ];
+    let rot = 0.0_f32.to_radians();
+    let rotation_timeline: Vec<QuatKeyframe> = vec![
+        QuatKeyframe::new(Vec3::new(rot, 0.0_f32.to_radians(), rot), 0.0),
+        QuatKeyframe::new(Vec3::new(rot, -45.0_f32.to_radians(), rot), 0.25),
+        QuatKeyframe::new(Vec3::new(rot, 45.0_f32.to_radians(), rot), 0.5),
+        QuatKeyframe::new(Vec3::new(rot, 45.0_f32.to_radians(), rot), 0.75),
+        QuatKeyframe::new(Vec3::new(rot, 0.0_f32.to_radians(), rot), 1.0),
+    ];
+
+    animation_player.add_animation(Animation {
+        fps: 60,
+        duration: 30.0,
+        playback_mode: PlaybackMode::Once,
+        tracks: vec![AnimationTrack {
+            bone_id: 0,
+            position: position_timeline,
+            rotation: rotation_timeline,
+            scale: scale_timeline,
+        }]
+    });
+
+    let mut one_bone_skeleton = Skeleton {
+        bones: vec![Bone::new(
+            Vec3::ONE,
+            Vec3::ZERO,
+            Vec3::ONE,
+            Some(Vec3::new(0.5, 0.5, 0.5)),
+        )]
+    };
+
+
+    let mut playing_anim = PlayingAnimation {
+        animation_id: 0,
+        reversed: false,
+        speed: 1.0,
+        time: 0.0,
+        playing: true,
+    };
+
+
+    let mut flat_gen = FlatGen::new(vec![
+        TerrainLayer::new(1, 23),
+        TerrainLayer::new(5, 1),
+        TerrainLayer::new(10, 22),
+    ]);
 
     //audio_manager.play_sound_flat(resource_manager.white_grass_music.clone());
 
-    let mut vao_wireframe = 0;
-    let mut vbo_wireframe = 0;
-    let float_size = std::mem::size_of::<f32>();
-    let mesh_byte_size = (crate::VERTICES.len() as usize * float_size) as isize;
-
-    let stride = 5 * float_size as i32;
-
-    unsafe {
-
-        gl::GenVertexArrays(1, &mut vao_wireframe);
-        gl::GenBuffers(1, &mut vbo_wireframe);
-
-        gl::BindVertexArray(vao_wireframe);
-        gl::BindBuffer(gl::ARRAY_BUFFER, vbo_wireframe);
-
-        gl::BufferData(
-            gl::ARRAY_BUFFER,
-            mesh_byte_size,
-            VERTICES.as_ptr() as *const _,
-            gl::STATIC_DRAW,
-        );
-
-        // position
-        gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, stride, std::ptr::null());
-        gl::EnableVertexAttribArray(0);
-        // uv
-        gl::VertexAttribPointer(
-            1,
-            2,
-            gl::FLOAT,
-            gl::FALSE,
-            stride,
-            (3 * float_size) as *const _,
-        );
-        gl::EnableVertexAttribArray(1);
-
-        gl::BindVertexArray(0);
-    }
-
-
+    let debug_mesh = BasicMesh::new_cube_pos_uv();
+    let entity_mesh = BasicMesh::new_cube_pos_uv();
 
     'game_loop: while !window.should_close() {
         window.poll_events(&mut input, &mut camera, &mut menu_manager);
@@ -175,13 +150,17 @@ fn main() {
         }
 
         if let Some(world) = &mut world {
+            animation_player.update(0.01666666667);
+            animation_player.update_animation(&mut playing_anim, &mut one_bone_skeleton);
+
             world.update(&resource_manager.block_models, &worker);
             world.chunk_manager.load_chunks_in_radius(
                 character_controller.position.x as i32,
                 character_controller.position.z as i32,
                 RENDER_DISTANCE,
                 &worker,
-                &resource_manager.block_models
+                &resource_manager.block_models,
+                &flat_gen,
             );
             world.update_dirty_chunks(&resource_manager.block_models, &meshing_worker);
             character_controller.update(
@@ -192,6 +171,7 @@ fn main() {
                 &menu_manager,
                 &mut audio_manager,
                 &resource_manager,
+                &mut playing_anim,
             );
         }
         
@@ -214,8 +194,10 @@ fn main() {
             &window.ui_projection,
             &input,
             &menu_manager,
-            vao_wireframe,
+            &debug_mesh,
             &window,
+            &one_bone_skeleton.bones[0],
+            &entity_mesh,
         );
 
         window.swap_buffers();

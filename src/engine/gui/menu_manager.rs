@@ -91,8 +91,8 @@ impl MenuManager {
                     self.selected_menu = new_menu;
                 }
             }
-
-            Menu::WorldLoadingScreen => self.world_loading_screen.update(if world.is_some() {world.unwrap().chunk_manager.chunks_loaded} else {0}),
+            // Possible panic!!!
+            Menu::WorldLoadingScreen => self.world_loading_screen.update(if world.is_some() {world.unwrap().chunk_manager.chunks_loaded} else {0}, &world.unwrap().chunk_manager),
 
             _ => {}
         }

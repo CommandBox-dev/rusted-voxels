@@ -8,7 +8,7 @@ impl Structure for BasicRoom {
 
     fn generate(&self, chunk: &mut Chunk, region: &mut ChunkRegion) {
 
-        let wall_block = 13;
+        let wall_block = 1; // 13;
         let floor_block = 3;
 
         let top = chunk.get_top_block(0, 0).1 as i32 + 1;

@@ -59,6 +59,61 @@ pub const VERTICES: [f32; 108] = [
     1.0, 1.0, 0.0,
 ];
 
+pub const VERTICES_UV: [f32; 108 + 72] = [
+    // right
+    1.0, 0.0, 1.0, 1.0, 0.0,
+    1.0, 0.0, 0.0, 0.0, 0.0,
+    1.0, 1.0, 0.0, 0.0, 1.0,
+
+    1.0, 0.0, 1.0, 1.0, 0.0,
+    1.0, 1.0, 0.0, 0.0, 1.0,
+    1.0, 1.0, 1.0, 1.0, 1.0,
+
+    // left
+    0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 1.0, 0.0,
+    0.0, 1.0, 1.0, 1.0, 1.0,
+
+    0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 1.0, 1.0, 1.0,
+    0.0, 1.0, 0.0, 0.0, 1.0,
+
+    // top
+    0.0, 1.0, 1.0, 0.0, 0.0,
+    1.0, 1.0, 1.0, 1.0, 0.0,
+    1.0, 1.0, 0.0, 1.0, 1.0,
+
+    0.0, 1.0, 1.0, 0.0, 0.0,
+    1.0, 1.0, 0.0, 1.0, 1.0,
+    0.0, 1.0, 0.0, 0.0, 1.0,
+
+    // bottom
+    0.0, 0.0, 0.0, 0.0, 0.0,
+    1.0, 0.0, 0.0, 1.0, 0.0,
+    1.0, 0.0, 1.0, 1.0, 1.0,
+
+    0.0, 0.0, 0.0, 0.0, 0.0,
+    1.0, 0.0, 1.0, 1.0, 1.0,
+    0.0, 0.0, 1.0, 0.0, 1.0,
+
+    // front
+    0.0, 0.0, 1.0, 0.0, 0.0,
+    1.0, 0.0, 1.0, 1.0, 0.0,
+    1.0, 1.0, 1.0, 1.0, 1.0,
+
+    0.0, 0.0, 1.0, 0.0, 0.0,
+    1.0, 1.0, 1.0, 1.0, 1.0,
+    0.0, 1.0, 1.0, 0.0, 1.0,
+
+    // back
+    1.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 1.0, 0.0,
+    0.0, 1.0, 0.0, 1.0, 1.0,
+
+    1.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0, 1.0, 1.0,
+    1.0, 1.0, 0.0, 0.0, 1.0,
+];
 
 // There should be multiple mesh types like translucent mesh, chunk mesh...
 pub trait Mesh {
@@ -120,6 +175,54 @@ impl BasicMesh {
             if self.vbo != 0 {
                 gl::DeleteBuffers(1, &self.vbo);
             }
+        }
+    }
+
+    pub fn new_cube_pos_uv() -> Self {
+
+        let mut vao = 0;
+        let mut vbo = 0;
+        let float_size = std::mem::size_of::<f32>();
+        let mesh_byte_size = (VERTICES_UV.len() as usize * float_size) as isize;
+
+        let stride = 5 * float_size as i32;
+
+        unsafe {
+
+            gl::GenVertexArrays(1, &mut vao);
+            gl::GenBuffers(1, &mut vbo);
+
+            gl::BindVertexArray(vao);
+            gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
+
+            gl::BufferData(
+                gl::ARRAY_BUFFER,
+                mesh_byte_size,
+                VERTICES_UV.as_ptr() as *const _,
+                gl::STATIC_DRAW,
+            );
+
+            // position
+            gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, stride, std::ptr::null());
+            gl::EnableVertexAttribArray(0);
+            // uv
+            gl::VertexAttribPointer(
+                1,
+                2,
+                gl::FLOAT,
+                gl::FALSE,
+                stride,
+                (3 * float_size) as *const _,
+            );
+            gl::EnableVertexAttribArray(1);
+
+            gl::BindVertexArray(0);
+        }
+
+        Self {
+            vao,
+            vbo,
+            vertex_count: (VERTICES_UV.len() / 5) as u32,
         }
     }
 

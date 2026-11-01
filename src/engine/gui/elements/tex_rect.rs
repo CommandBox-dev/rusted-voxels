@@ -3,7 +3,7 @@ use crate::engine::{gui::basic_ui::{UIAnchor, UIElement, UIModelC, UITransformC}
 
 
 pub struct UITexturedRect {
-    uv: UV,
+    pub uv: UV,
     transform: UITransformC,
     pub model: UIModelC,
 }

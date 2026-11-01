@@ -8,3 +8,4 @@ pub mod rendering;
 pub mod resources;
 pub mod world;
 pub mod util;
+pub mod animation;

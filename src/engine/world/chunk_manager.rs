@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::mpsc::TryRecvError};
 
 use rand::random_range;
 
-use crate::{engine::{blocks::{block::Block, block_model::{self, BlockModel}}, core::worker::Worker, rendering::{chunk_mesher, chunk_renderer::{self, upload_chunk_mesh}}, util::utility::inside_circle, world::{chunk::{CHUNK_WIDTH, Chunk, TickedBlock}, chunk_manager::ChunkState::{Available, InWork}, chunk_region::ChunkRegion, chunk_state::{ChunkState, GenerationStep}, generation::{self, world_generator::{WorldGenerator, Worldtype}}, lighting_system, voxel_coordinates::*, world::RENDER_DISTANCE}}, game::world::procedural::{basic_room::BasicRoom, fallen_tree::FallenTree, oak_tree::OakTree, test_structure::TestStruct}};
+use crate::{engine::{blocks::{block::Block, block_model::{self, BlockModel}}, core::worker::Worker, rendering::{chunk_mesher, chunk_renderer::{self, upload_chunk_mesh}}, util::utility::inside_circle, world::{chunk::{CHUNK_WIDTH, Chunk, TickedBlock}, chunk_manager::ChunkState::{Available, InWork}, chunk_region::ChunkRegion, chunk_state::{ChunkState, GenerationStep}, generation::{self, world_generator::{TerrainGenerator, WorldGenerator, Worldtype}}, lighting_system, voxel_coordinates::*, world::RENDER_DISTANCE}}, game::world::{procedural::{basic_room::BasicRoom, fallen_tree::FallenTree, oak_tree::OakTree, test_structure::TestStruct}, terrain::{flat::FlatGen, hills::HillGen}}};
 
 
 /// Instanced once per loaded dimension
@@ -63,6 +63,7 @@ impl ChunkManager {
         radius: u32,
         worker: &Worker,
         block_models: &Vec<BlockModel>,
+        flat_gen: &FlatGen,
         /*loaders: Vec<&ChunkLoader>*/
     ) {
         let sx: i32 = bx.div_euclid(CHUNK_WIDTH);
@@ -81,7 +82,7 @@ impl ChunkManager {
                 let coord = ChunkCoord::new(x, z);
                 
                 if self.chunks.get(&coord).is_none() {
-                    self.generate_chunk(x, z, block_models, worker);
+                    self.generate_chunk(x, z, block_models, worker, flat_gen);
                 }
             }
 
@@ -130,20 +131,25 @@ impl ChunkManager {
         }
     }
 
-    pub fn generate_chunk(&mut self, cx: i32, cz: i32, block_models: &Vec<BlockModel>, worker: &Worker) {
+    pub fn generate_chunk(&mut self, cx: i32, cz: i32, block_models: &Vec<BlockModel>, worker: &Worker, flat_gen: &FlatGen) {
 
         // clears old chunk before generating new one.
         // it would be nice to have an option that keeps
         // the old chunk while generating until replacing it
         // with the new version
+
         self.chunks.insert(ChunkCoord::new(cx, cz), ChunkState::InWork(GenerationStep::Empty));
 
         self.chunks_generating += 1;
+
+        let flat_gen = flat_gen.clone();
+
         let receiver = worker.execute(move || {
             let chunk_generator = WorldGenerator::new(12345, Worldtype::DEFAULT);
             let mut chunk = Chunk::new(cx, cz);
 
-            chunk_generator.generate_terrain(&mut chunk, 15); // POSSIBLE BUG FIX LATER
+            chunk_generator.gen_terrain(&mut chunk, &HillGen::new(()) ); // &flat_gen);
+            //chunk_generator.gen_terrain(&mut chunk, &flat_gen);
 
             chunk
         });
@@ -325,6 +331,7 @@ impl ChunkManager {
                     TerrainGenerator::generate_structure(&FallenTree {}, &mut chunk, &mut region);
                 }*/
 
+                /* 
                 for i in 1..=random_range(3..5) {
                     WorldGenerator::generate_structure(&BasicRoom {}, &mut chunk, &mut region);
                 }
@@ -332,6 +339,7 @@ impl ChunkManager {
                 for i in 1..=random_range(3..5) {
                     WorldGenerator::generate_structure(&TestStruct {}, &mut chunk, &mut region);
                 }
+                */
 
                 chunk.set_generation_step(GenerationStep::DirectLight);
 
@@ -470,14 +478,23 @@ impl ChunkManager {
 
     /// Takes chunk and replaces it with placeholder `ChunkState::InWork`
     pub fn take_chunk(&mut self, cx: i32, cz: i32) -> Option<ChunkState> {
-        self.chunks.insert(ChunkCoord::new(cx, cz), ChunkState::InWork(GenerationStep::Empty))
+        let coord = ChunkCoord::new(cx, cz);
+
+        if let Some(chunk_state) = self.get_chunk_ref(cx, cz) {
+            if let Available(chunk) = chunk_state {
+                let step = chunk.generation_step();
+
+                return self.chunks.insert(coord, ChunkState::InWork(step))
+            }
+        }
+        self.chunks.insert(coord, ChunkState::InWork(GenerationStep::Empty))
     }
 
     pub fn get_chunk(&mut self, cx: i32, cz: i32) -> Option<ChunkState> {
         self.chunks.remove(&ChunkCoord::new(cx, cz))
     }
 
-    pub fn get_chunk_ref(&mut self, cx: i32, cz: i32) -> Option<&ChunkState> {
+    pub fn get_chunk_ref(&self, cx: i32, cz: i32) -> Option<&ChunkState> {
         self.chunks.get(&ChunkCoord::new(cx, cz))
     }
 

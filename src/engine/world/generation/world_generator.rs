@@ -85,6 +85,12 @@ impl WorldGenerator {
         terra_gen
     }
 
+    pub fn gen_terrain<T: TerrainGenerator>(&self, chunk: &mut Chunk, terrain_generator: &T) {
+        terrain_generator.generate_chunk_terrain(chunk);
+        
+        chunk.set_generation_step(GenerationStep::Terrain);
+    }
+
     pub fn generate_terrain(&self, chunk: &mut Chunk, total_block_count: u32) {
         for x in 0..CHUNK_WIDTH {
             for z in 0..CHUNK_WIDTH {
@@ -200,4 +206,12 @@ impl WorldGenerator {
     pub fn generate_structure<S: Structure>(structure: &S, chunk: &mut Chunk, region: &mut ChunkRegion) {
         structure.generate(chunk, region);
     }
+}
+
+pub trait TerrainGenerator {
+    type GenOptions;
+
+    fn new(options: Self::GenOptions) -> Self where Self: Sized; // Box<dyn TerrainGenerator>
+
+    fn generate_chunk_terrain(&self, chunk: &mut Chunk);
 }
