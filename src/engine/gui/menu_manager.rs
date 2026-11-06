@@ -5,7 +5,7 @@ use crate::{engine::{
     core::{
         input::Input,
         window::{self, GameWindow},
-    }, entities::character_controller::{self, CharacterState}, gui::{
+    }, entity::character_controller::{self, CharacterState}, gui::{
         basic_ui::{
             UIAnchor::{AnchorBottom, AnchorBottomLeft, AnchorCentered, AnchorRight, AnchorTop, AnchorTopLeft, AnchorTopRight}, UIElement, UITransformC,
         }, menu_manager::Menu::Closed,

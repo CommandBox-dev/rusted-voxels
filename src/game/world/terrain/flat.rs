@@ -1,6 +1,6 @@
 use rand::random_range;
 
-use crate::engine::world::{chunk::{CHUNK_HEIGHT, CHUNK_WIDTH, Chunk}, generation::world_generator::TerrainGenerator};
+use crate::{engine::world::{chunk::{CHUNK_HEIGHT, CHUNK_WIDTH, Chunk}, generation::world_generator::TerrainGenerator}, game::blocks::blocks::Blocktype};
 
 #[derive(Debug, Clone)]
 pub struct FlatGen {
@@ -28,7 +28,7 @@ impl TerrainGenerator for FlatGen {
                     for z in 0..CHUNK_WIDTH {
                         let voxel_index = Chunk::voxel_index(x, y as i32, z);
 
-                        chunk.blocktype_data[voxel_index] = block as u8;
+                        chunk.blocktype_data[voxel_index] = block;
                     }
                 }
             }
@@ -40,11 +40,11 @@ impl TerrainGenerator for FlatGen {
 #[derive(Debug, Clone)]
 pub struct TerrainLayer {
     height: u32,
-    blocktype: u32,
+    blocktype: Blocktype,
 }
 
 impl TerrainLayer {
-    pub fn new(height: u32, blocktype: u32) -> Self {
+    pub fn new(height: u32, blocktype: Blocktype) -> Self {
         Self {
             height,
             blocktype,

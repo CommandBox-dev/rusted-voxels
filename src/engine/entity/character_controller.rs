@@ -12,7 +12,13 @@ use crate::engine::physics::aabb::{AABB, move_and_collide};
 use crate::engine::physics::raycast;
 use crate::engine::rendering::camera::Camera;
 use crate::engine::resources::resource_manager::{self, ResourceManager};
+use crate::engine::world::chunk::CHUNK_WIDTH;
+use crate::engine::world::chunk_region::ChunkRegion;
+use crate::engine::world::voxel_coordinates::ChunkCoord;
+use crate::engine::world::{chunk_region, lighting_system};
 use crate::engine::world::world::World;
+use crate::game;
+use crate::game::blocks::blocks::Blocktype;
 
 
 pub struct CharacterState {
@@ -58,9 +64,26 @@ impl CharacterState {
                     result.hit_position.x,
                     result.hit_position.y,
                     result.hit_position.z,
-                    0,
+                    Blocktype::Grass,
                 );
                 audio_manager.play_sound_flat(resource_manager.break_sound.clone());
+                game::blocks::blocks::on_break(Blocktype::Stone, self.target_block, world);
+
+                let cx = result.hit_position.x.div_euclid(CHUNK_WIDTH);
+                let cz = result.hit_position.z.div_euclid(CHUNK_WIDTH);
+
+                let lx = result.hit_position.x.rem_euclid(CHUNK_WIDTH);
+                let lz = result.hit_position.z.rem_euclid(CHUNK_WIDTH);
+
+                let coord = ChunkCoord::new(cx, cz);
+                if let Some(mut region) = chunk_region::ChunkRegion::take_chunk_region(&mut world.chunk_manager, &coord) {
+                    if let Some(mut chunk) = world.chunk_manager.get_avl_chunk_mut(cx, cz) {
+                        //lighting_system::update_light(chunk, &mut region, &IVec3::new(lx, result.hit_position.y, lz));
+                        chunk.clear_light();
+                        lighting_system::bake_indirect_light(chunk, &mut region);
+                        ChunkRegion::insert_chunk_region(&mut world.chunk_manager, &coord, region);
+                    }
+                }
             }
         }
 
@@ -69,14 +92,41 @@ impl CharacterState {
             && input.is_mouse_button_pressed(MouseButton::Right as i32)
         {
             if result.hit {
-                viewmodel_anim.time = 0.0;
-                world.set_block(
-                    result.hit_position.x + result.hit_normal.x,
-                    result.hit_position.y + result.hit_normal.y,
-                    result.hit_position.z + result.hit_normal.z,
-                    self.selected_slot + 1,
-                );
-                audio_manager.play_sound_flat(resource_manager.place_sound.clone());
+                let place_pos = result.hit_position + result.hit_normal;
+
+                let mut place_aabb = AABB::CUBE;
+                let mut character_aabb = AABB::HUMANOID;
+
+                place_aabb.add_offset(place_pos.as_vec3());
+                character_aabb.add_offset(self.position);
+
+                if true { // !place_aabb.intersects(&character_aabb) {
+                    viewmodel_anim.time = 0.0;
+                    world.set_block(
+                        place_pos.x,
+                        place_pos.y,
+                        place_pos.z,
+                        Blocktype::Stone, //self.selected_slot + 1,
+                    );
+                    audio_manager.play_sound_flat(resource_manager.place_sound.clone());
+                    game::blocks::blocks::on_place(Blocktype::Stone, place_pos, world);
+
+                    let cx = result.hit_position.x.div_euclid(CHUNK_WIDTH);
+                    let cz = result.hit_position.z.div_euclid(CHUNK_WIDTH);
+
+                    let lx = result.hit_position.x.rem_euclid(CHUNK_WIDTH);
+                    let lz = result.hit_position.z.rem_euclid(CHUNK_WIDTH);
+
+                    let coord = ChunkCoord::new(cx, cz);
+                    if let Some(mut region) = chunk_region::ChunkRegion::take_chunk_region(&mut world.chunk_manager, &coord) {
+                        if let Some(mut chunk) = world.chunk_manager.get_avl_chunk_mut(cx, cz) {
+                            //lighting_system::update_light(chunk, &mut region, &IVec3::new(lx, result.hit_position.y, lz));
+                            chunk.clear_light();
+                            lighting_system::bake_indirect_light(chunk, &mut region);
+                            ChunkRegion::insert_chunk_region(&mut world.chunk_manager, &coord, region);
+                        }
+                    }
+                }
             }
         }
 
@@ -85,7 +135,7 @@ impl CharacterState {
             && input.is_mouse_button_pressed(MouseButton::Middle as i32)
         {
             if result.hit {
-                self.selected_slot = result.hit_block - 1;
+                //self.selected_slot = Blocktype::Stone;
             }
         }
 

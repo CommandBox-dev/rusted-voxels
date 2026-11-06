@@ -1,7 +1,7 @@
 pub mod audio;
-pub mod blocks;
+pub mod block;
 pub mod core;
-pub mod entities;
+pub mod entity;
 pub mod gui;
 pub mod physics;
 pub mod rendering;

@@ -1,4 +1,4 @@
-use crate::engine::world::world::World;
+use crate::{engine::world::world::World, game::blocks::blocks::Blocktype};
 use glam::Vec3;
 
 const EPSILON: f32 = 0.0001;
@@ -18,6 +18,15 @@ impl AABB {
         min: Vec3::new(-0.3, -1.60, -0.3),
         max: Vec3::new(0.3, 0.20, 0.3),
     };
+
+    pub fn intersects(&self, other: &Self) -> bool {
+        self.min.cmple(other.max).all() && other.min.cmple(self.max).all()
+    }
+
+    pub fn add_offset(&mut self, offset: Vec3) {
+        self.min += offset;
+        self.max += offset;
+    }
 }
 
 pub struct CollisionResult {
@@ -26,6 +35,7 @@ pub struct CollisionResult {
     // slide collisions
 }
 
+// TODO: improve the current buggy move and collide implementation
 pub fn move_and_collide(
     world: &World,
     position: &Vec3,
@@ -73,7 +83,7 @@ fn move_axis_x(
             for bx in start..=end {
                 for y in min_block_y..=max_block_y {
                     for z in min_block_z..=max_block_z {
-                        if world.get_block(bx, y, z) > 0 {
+                        if world.get_block(bx, y, z) != Blocktype::Air {
                             let correction = bx as f32 - max_x;
                             return if correction < 0.0 { 0.0 } else { correction };
                         }
@@ -91,7 +101,7 @@ fn move_axis_x(
             for bx in (end..=start).rev() {
                 for y in min_block_y..=max_block_y {
                     for z in min_block_z..=max_block_z {
-                        if world.get_block(bx, y, z) > 0 {
+                        if world.get_block(bx, y, z) != Blocktype::Air {
                             let correction = (bx + 1) as f32 - min_x;
                             return if correction > 0.0 { 0.0 } else { correction };
                         }
@@ -134,7 +144,7 @@ fn move_axis_y(
             for x in min_block_x..=max_block_x {
                 for by in start..=end {
                     for z in min_block_z..=max_block_z {
-                        if world.get_block(x, by, z) > 0 {
+                        if world.get_block(x, by, z) != Blocktype::Air {
                             let correction = by as f32 - max_y;
                             return if correction < 0.0 { 0.0 } else { correction };
                         }
@@ -152,7 +162,7 @@ fn move_axis_y(
             for x in min_block_x..=max_block_x {
                 for by in (end..=start).rev() {
                     for z in min_block_z..=max_block_z {
-                        if world.get_block(x, by, z) > 0 {
+                        if world.get_block(x, by, z) != Blocktype::Air {
                             result.is_on_floor = true;
                             let correction = (by + 1) as f32 - min_y;
                             return if correction > 0.0 { 0.0 } else { correction };
@@ -196,7 +206,7 @@ fn move_axis_z(
             for x in min_block_x..=max_block_x {
                 for y in min_block_y..=max_block_y {
                     for bz in start..=end {
-                        if world.get_block(x, y, bz) > 0 {
+                        if world.get_block(x, y, bz) != Blocktype::Air {
                             let correction = bz as f32 - max_z;
                             return if correction < 0.0 { 0.0 } else { correction };
                         }
@@ -214,7 +224,7 @@ fn move_axis_z(
             for x in min_block_x..=max_block_x {
                 for y in min_block_y..=max_block_y {
                     for bz in (end..=start).rev() {
-                        if world.get_block(x, y, bz) > 0 {
+                        if world.get_block(x, y, bz) != Blocktype::Air {
                             let correction = (bz + 1) as f32 - min_z;
                             return if correction > 0.0 { 0.0 } else { correction };
                         }

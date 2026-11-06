@@ -4,7 +4,7 @@ use glam::{Mat4, Quat, Vec3};
 use glfw::MouseButton;
 
 use crate::engine::{
-    animation::animation::Bone, blocks::block_model::BlockModel, core::{input::Input, window::GameWindow}, entities::character_controller::CharacterState, gui::{
+    animation::animation::Bone, block::block_model::BlockModel, core::{input::Input, window::GameWindow}, entity::character_controller::CharacterState, gui::{
         basic_ui::UIElement, elements::{button::UIButton, check_box::UICheckBox, label::UILabel}, menu_manager::{self, Menu, MenuManager},
     }, rendering::{self, camera::Camera, chunk_mesher, mesh::{self, BasicMesh}}, resources::{
         resource_manager::{self, ResourceManager},
@@ -297,15 +297,15 @@ impl RenderingServer {
             target_pos -= Vec3::splat(0.005);
             
             let mut model = Mat4::from_translation(target_pos);
-            model *= Mat4::from_scale(Vec3::splat(1.02));
+            model *= Mat4::from_scale(Vec3::splat(1.01)); // 1.02
             
             resource_manager.wireframe_shader.bind();
 
-            gl::Disable(gl::CULL_FACE);
+            //gl::Disable(gl::CULL_FACE);
             
             gl::Uniform4f(self.wire_line_color_loc, 0.0, 0.0, 0.0, 1.0);
             gl::Uniform4f(self.wire_face_color_loc, 1.0, 1.0, 1.0, 0.15);
-            gl::Uniform1f(self.wire_line_width_loc, 0.02);
+            gl::Uniform1f(self.wire_line_width_loc, 0.01); // 0.02
             
             gl::UniformMatrix4fv(self.wire_view_loc, 1, gl::FALSE, camera.view.to_cols_array().as_ptr());
             gl::UniformMatrix4fv(self.wire_proj_loc, 1, gl::FALSE, camera.projection.to_cols_array().as_ptr());
@@ -320,7 +320,7 @@ impl RenderingServer {
             gl::BindVertexArray(entity_mesh.vao);
             gl::DrawArrays(gl::TRIANGLES, 0, entity_mesh.vertex_count as i32);
 
-            gl::Enable(gl::CULL_FACE);
+            //gl::Enable(gl::CULL_FACE);
         }
     }
 

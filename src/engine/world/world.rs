@@ -3,10 +3,10 @@ use std::{ops::Add, sync::{Arc, RwLock, mpsc::TryRecvError}};
 use glam::*;
 use rand::{rand_core::block, random_range, seq::IndexedRandom};
 
-use crate::engine::{blocks::block_model::BlockModel, core::worker::Worker, world::{chunk::{CHUNK_HEIGHT, CHUNK_WIDTH}, chunk_manager::{self, ChunkManager}, chunk_region::{self, ChunkRegion}, generation::world_generator::Dimension, lighting_system::{self, QueuedLight}, voxel_coordinates::ChunkCoord}}
+use crate::{engine::{block::block_model::BlockModel, core::worker::Worker, world::{chunk::{CHUNK_HEIGHT, CHUNK_WIDTH}, chunk_manager::{self, ChunkManager}, chunk_region::{self, ChunkRegion}, generation::world_generator::Dimension, lighting_system::{self, QueuedLight}, voxel_coordinates::ChunkCoord}}, game::blocks::blocks::Blocktype::{self, MazeStone}}
 ;
 
-pub const RENDER_DISTANCE: u32 = 16;
+pub const RENDER_DISTANCE: u32 = 10;
 pub const RENDER_AREA: u32 = RENDER_DISTANCE * RENDER_DISTANCE;
 
 pub struct World {
@@ -30,7 +30,7 @@ impl World {
         self.chunk_manager.update_dirty_chunks(block_models, worker);
     }
 
-    pub fn get_block(&self, gx: i32, gy: i32, gz: i32) -> u32 {
+    pub fn get_block(&self, gx: i32, gy: i32, gz: i32) -> Blocktype {
         let cx = gx.div_euclid(CHUNK_WIDTH);
         let cz = gz.div_euclid(CHUNK_WIDTH);
 
@@ -39,11 +39,11 @@ impl World {
             let lz = gz.rem_euclid(CHUNK_WIDTH);
             return chunk.get_block(lx, gy, lz);
         } else {
-            return 0; // u32::MAX;
+            return Blocktype::Void;
         }
     }
 
-    pub fn set_block(&mut self, gx: i32, gy: i32, gz: i32, block: u32) {
+    pub fn set_block(&mut self, gx: i32, gy: i32, gz: i32, block: Blocktype) {
         let cx = gx.div_euclid(CHUNK_WIDTH);
         let cz = gz.div_euclid(CHUNK_WIDTH);
 
@@ -52,33 +52,14 @@ impl World {
             let lz = gz.rem_euclid(CHUNK_WIDTH);
             let replaced_block = chunk.insert_block(lx, gy, lz, block);
 
-            if replaced_block == 5 {
-                //self.fill_sphere(gx, gy, gz, 8, vec![0]); // 5
-            }
-
             let mut place_pos = IVec3::new(gx, gy, gz);
+
+            if block != Blocktype::Air {
+                chunk.set_light(lx, gy, lz, 0);
+            }
 
             self.mark_chunk_area_dirty(place_pos, place_pos);
 
-        } else {return;}
-
-        if block == 2 || block == 0 {
-            let coord = ChunkCoord::new(cx, cz);
-            if let Some(mut region) = ChunkRegion::take_chunk_region(&mut self.chunk_manager, &coord) {
-                let chunk = self.chunk_manager.get_avl_chunk_mut(cx, cz).unwrap();
-                let lx = gx.rem_euclid(CHUNK_WIDTH);
-                let lz = gz.rem_euclid(CHUNK_WIDTH);
-                //lighting_system::bake_indirect_light(chunk, &mut region, Some(QueuedLight::new(lx + 1, gy, lz, if block == 0 {chunk.get_light(lx + 1, gy, lz)} else {15})));
-                //lighting_system::bake_indirect_light(chunk, &mut region, Some(QueuedLight::new(lx - 1, gy, lz, if block == 0 {chunk.get_light(lx - 1, gy, lz)} else {15})));
-                //lighting_system::bake_indirect_light(chunk, &mut region, Some(QueuedLight::new(lx, gy + 1, lz, if block == 0 {chunk.get_light(lx, gy + 1, lz)} else {15})));
-                //lighting_system::bake_indirect_light(chunk, &mut region, Some(QueuedLight::new(lx, gy - 1, lz, if block == 0 {chunk.get_light(lx, gy - 1, lz)} else {15})));
-                //lighting_system::bake_indirect_light(chunk, &mut region, Some(QueuedLight::new(lx, gy, lz + 1, if block == 0 {chunk.get_light(lx, gy, lz + 1)} else {15})));
-                //lighting_system::bake_indirect_light(chunk, &mut region, Some(QueuedLight::new(lx, gy, lz - 1, if block == 0 {chunk.get_light(lx, gy, lz - 1)} else {15})));
-                ChunkRegion::insert_chunk_region(&mut self.chunk_manager, &coord, region);
-                let mut min = IVec3::new((cx-1) * CHUNK_WIDTH, gy, (cz-1) * CHUNK_WIDTH);
-                let mut max = IVec3::new((cx+1) * CHUNK_WIDTH, gy, (cz+1) * CHUNK_WIDTH);
-                self.mark_chunk_area_dirty(min, max);
-            }
         }
     }
 
@@ -112,7 +93,7 @@ impl World {
         }
     }
 
-    pub fn get_top_block(&self, gx: i32, gz: i32) -> (u32, u32) {
+    pub fn get_top_block(&self, gx: i32, gz: i32) -> (Blocktype, u32) {
 
         let cx = gx.div_euclid(CHUNK_WIDTH);
         let cz = gz.div_euclid(CHUNK_WIDTH);
@@ -125,10 +106,10 @@ impl World {
             return chunk.get_top_block(lx, lz)
         }
 
-        (0, CHUNK_HEIGHT as u32 - 1)
+        (Blocktype::Void, CHUNK_HEIGHT as u32 - 1)
     }
 
-    pub fn fill_sphere(&mut self, gx: i32, gy: i32, gz: i32, radius: u32, fill_blocks: Vec<u32>) {
+    pub fn fill_sphere(&mut self, gx: i32, gy: i32, gz: i32, radius: u32, fill_blocks: Vec<Blocktype>) {
         if fill_blocks.len() > 1 {
             for sx in gx - radius as i32..gx + radius as i32 {
                 for sy in gy - radius as i32..gy + radius as i32 {
@@ -207,12 +188,12 @@ impl World {
         for x in 0..width * scale {
             for z in 0..width * scale {
                 let grid_index = ((x / scale) * width + (z / scale) % width) as usize;
-                let block: u32 = if grid[grid_index] { 7 } else { 0 };
+                let block = if grid[grid_index] {Blocktype::MazeStone} else {Blocktype::Air};
 
                 for y in gy..gy + height {
                     self.set_block(gx + x - half_width, y, gz + z - half_width, block);
                 }
-                self.set_block(gx + x - half_width, gy - 1, gz + z - half_width, 6);
+                self.set_block(gx + x - half_width, gy - 1, gz + z - half_width, Blocktype::MazeTiling);
             }
         }
 

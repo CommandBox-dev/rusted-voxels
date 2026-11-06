@@ -17,9 +17,15 @@ void main() {
     bool quad_edge = min_edge < u_line_width;
     bool diagonal = abs(uv.x + uv.y - 1.0) < u_line_width;
     
+    float line_threshold = 0.01; // 0.01
+
     if (quad_edge || (diagonal && show_triangles)) {
         FragColor = u_line_color;
     } else {
-        FragColor = u_face_color;
+        if (mod(uv.x, 0.0625) > line_threshold || (mod(uv.y, 0.0625) > line_threshold)) {
+            FragColor = u_face_color;
+        } else {
+            FragColor = vec4(0.0);
+        }
     }
 }

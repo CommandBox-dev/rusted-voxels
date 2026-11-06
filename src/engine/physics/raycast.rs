@@ -1,9 +1,6 @@
 use glam::{IVec3, Vec3};
 
-use crate::engine::{
-    world::chunk::{self, Chunk},
-    world::world::World,
-};
+use crate::{engine::world::{chunk::{self, Chunk}, world::World}, game::blocks::blocks::Blocktype};
 
 pub fn cast_ray(origin: Vec3, dir: Vec3, length: f32, world: &mut World) -> RayResult {
     // direction needs to be normalized
@@ -71,9 +68,9 @@ pub fn cast_ray(origin: Vec3, dir: Vec3, length: f32, world: &mut World) -> RayR
     let mut last_step_axis: i32 = -1;
 
     while (distance <= length) {
-        let block: u32 = world.get_block(x, y, z);
+        let block = world.get_block(x, y, z);
 
-        if (block > 0) {
+        if (block != Blocktype::Air) {
             result.hit = true;
             result.hit_position.x = x;
             result.hit_position.y = y;
@@ -117,7 +114,7 @@ pub struct RayResult {
     pub hit: bool,
     pub hit_position: IVec3,
     pub hit_normal: IVec3,
-    pub hit_block: u32,
+    pub hit_block: Blocktype,
     pub travel_distance: f32,
 }
 
@@ -127,7 +124,7 @@ impl RayResult {
             hit: false,
             hit_position: IVec3::new(0, 0, 0),
             hit_normal: IVec3::new(0, 0, 0),
-            hit_block: 0,
+            hit_block: Blocktype::Air,
             travel_distance: 0.0,
         }
     }

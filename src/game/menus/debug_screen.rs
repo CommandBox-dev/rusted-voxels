@@ -1,4 +1,4 @@
-use crate::engine::{entities::character_controller::CharacterState, gui::{basic_ui::{UIAnchor::{AnchorBottomLeft, AnchorTopLeft}, UIElement, UITransformC}, elements::label::UILabel}, physics::aabb::AABB, resources::resource_manager::ResourceManager, world::world::World};
+use crate::engine::{entity::character_controller::CharacterState, gui::{basic_ui::{UIAnchor::{AnchorBottomLeft, AnchorTopLeft}, UIElement, UITransformC}, elements::label::UILabel}, physics::aabb::AABB, resources::resource_manager::ResourceManager, world::world::World};
 
 pub struct DebugScreen {
     version_label: UILabel,

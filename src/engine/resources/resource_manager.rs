@@ -1,7 +1,7 @@
 use kira::sound::static_sound::StaticSoundData;
 
 use crate::engine::{
-    self, blocks::block_model::BlockModel, rendering::{mesh::BasicMesh, voxel_mesher::voxelize_atlas}, resources::{shader::*, texture::*},
+    self, block::block_model::BlockModel, rendering::{mesh::BasicMesh, voxel_mesher::voxelize_atlas}, resources::{shader::*, texture::*},
 };
 
 pub struct ResourceManager {
@@ -102,34 +102,38 @@ impl ResourceManager {
         let apple_leaves = manual.tile_atlas.get_tile(String::from("leaves_apple"));
         let rock = manual.tile_atlas.get_tile(String::from("cracked_stone_floor"));
         let compressed = manual.tile_atlas.get_tile(String::from("compressed_stone"));
+        let top = manual.tile_atlas.get_tile(String::from("grid"));
 
         manual.block_models = vec![
-            BlockModel::new_cube(cobblestone),
-            BlockModel::new_cube(wall),
-            BlockModel::new_cube(sand),
-            BlockModel::new_cube_sides_top_bottom(grass_side, grass_top, cobblestone),
-            //BlockModel::new_cube(crate_tile),
-            BlockModel::new_cube_sides_top_bottom(bomb_side, bomb_top, bomb_side),
-            BlockModel::new_cube(floor_tiling),
-            BlockModel::new_cube(labyrinth_stone),
-            BlockModel::new_cube(stone_bricks),
-            BlockModel::new_cube(stone_tilee),
-            BlockModel::new_cube(stone),
-            BlockModel::new_cube(wall),
-            BlockModel::new_cube(wall2),
-            BlockModel::new_cube(bricks),
-            BlockModel::new_cube(ore),
-            BlockModel::new_cube(base),
-            //BlockModel::new_cube_sides_top_bottom(pillar, labyrinth_stone, labyrinth_stone),
-            //BlockModel::new_cube_sides_top_bottom(face, labyrinth_stone, labyrinth_stone),
-            BlockModel::new_cube(log),
-            BlockModel::new_cube(leaves),
-            BlockModel::new_cube(snow),
-            BlockModel::new_cube(forest_grass),
-            BlockModel::new_cube(bush),
-            BlockModel::new_cube(apple_leaves),
-            BlockModel::new_cube(rock),
-            BlockModel::new_cube(compressed),
+            BlockModel::new_block(ore),
+            BlockModel::new_block_sides_top_bottom(grass_side, top, cobblestone),
+            //BlockModel::new_block(cobblestone),
+            //BlockModel::new_block(cobblestone),
+            BlockModel::new_cube_mesh(cobblestone),
+            BlockModel::new_block(sand),
+            BlockModel::new_block(log),
+            BlockModel::new_block(leaves),
+            BlockModel::new_block(labyrinth_stone),
+            BlockModel::new_block(floor_tiling),
+            BlockModel::new_block(stone_bricks),
+            BlockModel::new_block(compressed),
+            BlockModel::new_block(rock),
+            
+            BlockModel::new_block(wall),
+            //BlockModel::new_block(crate_tile),
+            BlockModel::new_block_sides_top_bottom(bomb_side, bomb_top, bomb_side),
+            BlockModel::new_block(stone_tilee),
+            BlockModel::new_block(stone),
+            BlockModel::new_block(wall),
+            BlockModel::new_block(wall2),
+            BlockModel::new_block(bricks),
+            BlockModel::new_block(base),
+            //BlockModel::new_block_sides_top_bottom(pillar, labyrinth_stone, labyrinth_stone),
+            //BlockModel::new_block_sides_top_bottom(face, labyrinth_stone, labyrinth_stone),
+            BlockModel::new_block(snow),
+            BlockModel::new_block(forest_grass),
+            BlockModel::new_block(bush),
+            BlockModel::new_block(apple_leaves),
         ];
 
         for model in &manual.block_models {

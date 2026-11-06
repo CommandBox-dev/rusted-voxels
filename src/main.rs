@@ -13,11 +13,11 @@ use crate::engine::animation::animation::{Animation, AnimationTrack, Bone, QuatK
 use crate::engine::animation::animation_player::{self, AnimationPlayer, PlayingAnimation};
 use crate::engine::animation::skeleton::{self, Skeleton};
 use crate::engine::audio::audio_server::AudioServer;
-use crate::engine::blocks::block_model::*;
+use crate::engine::block::block_model::*;
 use crate::engine::core::input::Input;
 use crate::engine::core::window::GameWindow;
 use crate::engine::core::worker::Worker;
-use crate::engine::entities::character_controller::CharacterState;
+use crate::engine::entity::character_controller::CharacterState;
 use crate::engine::gui::basic_ui::UIAnchor::AnchorBottomLeft;
 use crate::engine::gui::basic_ui::UIAnchor::AnchorCentered;
 use crate::engine::gui::basic_ui::UIAnchor::AnchorLeft;
@@ -47,6 +47,7 @@ use crate::engine::world::generation::world_generator::TerrainGenerator;
 use crate::engine::world::voxel_coordinates::BlockCoord;
 use crate::engine::world::world::*;
 use crate::engine::*;
+use crate::game::blocks::blocks::Blocktype;
 use crate::game::world::generation::Dimension::Flat;
 use crate::game::world::terrain::flat::{FlatGen, TerrainLayer};
 
@@ -131,9 +132,9 @@ fn main() {
 
 
     let mut flat_gen = FlatGen::new(vec![
-        TerrainLayer::new(1, 23),
-        TerrainLayer::new(5, 1),
-        TerrainLayer::new(10, 22),
+        TerrainLayer::new(1, Blocktype::CompressedStone),
+        TerrainLayer::new(5, Blocktype::Stone),
+        TerrainLayer::new(10, Blocktype::Grass),
     ]);
 
     //audio_manager.play_sound_flat(resource_manager.white_grass_music.clone());

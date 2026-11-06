@@ -1,7 +1,7 @@
 use fastnoise_lite::{FastNoiseLite, FractalType, NoiseType::{self, OpenSimplex2}};
 use rand::random_range;
 
-use crate::engine::world::{chunk::{CHUNK_HEIGHT, CHUNK_WIDTH, Chunk}, generation::world_generator::TerrainGenerator};
+use crate::{engine::world::{chunk::{CHUNK_HEIGHT, CHUNK_WIDTH, Chunk}, generation::world_generator::TerrainGenerator}, game::blocks::blocks::Blocktype};
 
 
 pub struct HillGen {
@@ -41,53 +41,6 @@ impl TerrainGenerator for HillGen {
         cave_noise.set_fractal_lacunarity(Some(1.1));
         cave_noise.set_fractal_gain(Some(1.5));
 
-        /*biome_noise.set_seed(Some(275));
-        biome_noise.set_fractal_octaves(Some(3));
-
-        noise.set_frequency(Some(0.015));
-        noise.set_domain_warp_amp(Some(25.0));
-
-        overhang_noise.set_seed(Some(9334));
-        overhang_noise.set_fractal_octaves(Some(4));
-        overhang_noise.set_frequency(Some(0.01));
-        overhang_noise.set_domain_warp_amp(Some(25.0));
-
-        cave_noise.set_seed(Some(1572));
-        cave_noise.set_noise_type(Some(OpenSimplex2));
-        cave_noise.set_fractal_type(Some(fastnoise_lite::FractalType::Ridged));
-        cave_noise.set_frequency(Some(0.25));
-        cave_noise.set_fractal_octaves(Some(2)); // 4
-        cave_noise.set_fractal_lacunarity(Some(1.1));
-        cave_noise.set_fractal_gain(Some(1.5));*/
-
-        /*biome_noise.set_seed(Some(275));
-        biome_noise.set_fractal_octaves(Some(3));
-        biome_noise.set_frequency(Some(0.01));
-
-        noise.set_frequency(Some(0.015));
-        //noise.set_domain_warp_amp(Some(25.0));
-
-        noise.set_noise_type(Some(NoiseType::OpenSimplex2));
-        noise.set_fractal_type(Some(FractalType::FBm));
-        noise.set_frequency(Some(0.005));
-        //noise.set_fractal_lacunarity(Some(3.0));
-        noise.set_fractal_octaves(Some(6));
-        //noise.set_fractal_gain(Some(0.5));
-        
-        overhang_noise.set_seed(Some(9334));
-        overhang_noise.set_fractal_octaves(Some(4));
-        overhang_noise.set_frequency(Some(0.01));
-        overhang_noise.set_domain_warp_amp(Some(25.0));
-
-        cave_noise.set_seed(Some(1572));
-        cave_noise.set_noise_type(Some(OpenSimplex2));
-        cave_noise.set_fractal_type(Some(fastnoise_lite::FractalType::Ridged));
-        cave_noise.set_frequency(Some(0.25));
-        cave_noise.set_fractal_octaves(Some(2)); // 4
-        cave_noise.set_fractal_lacunarity(Some(1.1));
-        cave_noise.set_fractal_gain(Some(1.5));*/
-
-
         Self {
             noise,
             overhang_noise,
@@ -116,7 +69,7 @@ impl TerrainGenerator for HillGen {
 
                     let local_voxel_index = Chunk::voxel_index(x, y, z);
                     if y == 0 {
-                        chunk.blocktype_data[local_voxel_index] = 15;
+                        chunk.blocktype_data[local_voxel_index] = Blocktype::CompressedStone;
                         continue;
                     }
 
@@ -129,9 +82,9 @@ impl TerrainGenerator for HillGen {
                     if y <= height_offset && cave <= 1.3 {
                         // 1.0
                         if y == height_offset {
-                            chunk.blocktype_data[local_voxel_index] = if biome > 0.1 { 3 } else { 4 };
+                            chunk.blocktype_data[local_voxel_index] = if biome > 0.1 { Blocktype::Sand } else { Blocktype::Grass };
                         } else {
-                            chunk.blocktype_data[local_voxel_index] = 8;
+                            chunk.blocktype_data[local_voxel_index] = Blocktype::Stone;
                         }
                         continue;
                     }
@@ -144,15 +97,15 @@ impl TerrainGenerator for HillGen {
 
                     if ((y - height_offset) as f32) < (value + overhang) * 50.0 && cave <= 1.3 {
                         // 1.0
-                        chunk.blocktype_data[local_voxel_index] = 8;
+                        chunk.blocktype_data[local_voxel_index] = Blocktype::Stone;
                         placed = true;
-                        if rand::random_range(0..=1500) == 0 {
+                        /*if rand::random_range(0..=1500) == 0 {
                             chunk.blocktype_data[local_voxel_index] = 14
-                        } // 3
+                        } // 3*/
                     } else {
                         if placed {
                             placed = false;
-                            chunk.blocktype_data[local_voxel_index] = if biome > 0.5 { 3 } else { 4 };
+                            chunk.blocktype_data[local_voxel_index] = if biome > 0.5 { Blocktype::Sand } else { Blocktype::Grass };
                         }
                     }
                 }

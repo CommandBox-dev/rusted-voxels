@@ -2,7 +2,7 @@ use std::alloc::System;
 
 use glam::Vec3;
 
-use crate::engine::world::{chunk_region::ChunkRegion, chunk_state::GenerationStep, voxel_coordinates::{BlockCoord, ChunkCoord}, world::World};
+use crate::{engine::world::{chunk_region::ChunkRegion, chunk_state::GenerationStep, voxel_coordinates::{BlockCoord, ChunkCoord}, world::World}, game::blocks::blocks::Blocktype::{self, Void}};
 
 pub static CHUNK_WIDTH: i32 = 16;
 pub static CHUNK_HEIGHT: i32 = 256;
@@ -16,7 +16,7 @@ pub static CHUNK_VOLUME: i32 = CHUNK_AREA * CHUNK_HEIGHT;
 // gx, gy, gz = global block
 
 // TODO: Chunks should own their matrices / the chunk mesh
-// TODO: Chunk mesh should be a seperate genral purpose or custom mesh struct
+// TODO: Chunk mesh should be a separate genral purpose or custom mesh struct
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Chunk {
@@ -25,8 +25,9 @@ pub struct Chunk {
     gen_step: GenerationStep,
     dirty: bool,
 
-    pub blocktype_data: Box<[u8; CHUNK_VOLUME as usize]>,
-    pub light_data: Box<[u32; CHUNK_VOLUME as usize]>,
+    pub blocktype_data: Box<[Blocktype; CHUNK_VOLUME as usize]>,
+    pub blockstate_data: Box<[u8; CHUNK_VOLUME as usize]>,
+    pub blocklight_data: Box<[u32; CHUNK_VOLUME as usize]>,
 
     pub uptime: u32,
 
@@ -52,8 +53,9 @@ impl Chunk {
             gen_step: GenerationStep::Empty,
             dirty: false,
 
-            blocktype_data: Box::new([0; CHUNK_VOLUME as usize]),
-            light_data: Box::new([0; CHUNK_VOLUME as usize]),
+            blocktype_data: Box::new([Blocktype::Air; CHUNK_VOLUME as usize]),
+            blockstate_data: Box::new([0; CHUNK_VOLUME as usize]),
+            blocklight_data: Box::new([0; CHUNK_VOLUME as usize]),
 
             uptime: 0,
 
@@ -62,7 +64,6 @@ impl Chunk {
             vertex_count: 0,
         }
     }
-
 
     #[inline]
     pub fn is_dirty(&self) -> bool {
@@ -83,62 +84,59 @@ impl Chunk {
     }
 
 
-    pub fn get_block(&self, lx: i32, ly: i32, lz: i32) -> u32 {
+    pub fn get_block(&self, lx: i32, ly: i32, lz: i32) -> Blocktype {
         if lx < 0
         || ly < 0
         || lz < 0
         || lx >= CHUNK_WIDTH
         || ly >= CHUNK_HEIGHT
-        || lz >= CHUNK_WIDTH
-        {
-            return 0;
+        || lz >= CHUNK_WIDTH {
+            return Void;
         }
 
         let index = Chunk::voxel_index(lx, ly, lz);
 
-        self.blocktype_data[index] as u32
+        self.blocktype_data[index]
     }
 
-    pub fn set_block(&mut self, lx: i32, ly: i32, lz: i32, block: u32) {
+    pub fn set_block(&mut self, lx: i32, ly: i32, lz: i32, block: Blocktype) {
         if lx < 0
         || ly < 0
         || lz < 0
         || lx >= CHUNK_WIDTH
         || ly >= CHUNK_HEIGHT 
-        || lz >= CHUNK_WIDTH
-        {
+        || lz >= CHUNK_WIDTH {
             return;
         }
 
         let index = Chunk::voxel_index(lx, ly, lz);
 
-        self.blocktype_data[index] = block as u8;
+        self.blocktype_data[index] = block;
     }
     /// Replaces block and returns the replaced block
-    pub fn insert_block(&mut self, lx: i32, ly: i32, lz: i32, block: u32) -> u32 {
+    pub fn insert_block(&mut self, lx: i32, ly: i32, lz: i32, block: Blocktype) -> Blocktype {
         if lx < 0
         || ly < 0
         || lz < 0
         || lx >= CHUNK_WIDTH
         || ly >= CHUNK_HEIGHT
-        || lz >= CHUNK_WIDTH
-        {
-            return u32::MAX;
+        || lz >= CHUNK_WIDTH {
+            return Blocktype::Void;
         }
 
         let index = Chunk::voxel_index(lx, ly, lz);
 
         let replaced_block = self.blocktype_data[index];
-        self.blocktype_data[index] = block as u8;
+        self.blocktype_data[index] = block;
 
-        replaced_block as u32
+        replaced_block
     }
 
     /// Returns the block of the adjacent chunk if the position is outside chunk bounds
     // TODO: rename top chunk to up chunk
-    pub fn get_block_global(&self, region: &ChunkRegion, lx: i32, ly: i32, lz: i32) -> u32 {
+    pub fn get_block_global(&self, region: &ChunkRegion, lx: i32, ly: i32, lz: i32) -> Blocktype {
         if ly < 0 || ly >= CHUNK_HEIGHT {
-            return u32::MAX;
+            return Blocktype::Void;
         }
 
         let is_top = lz >= CHUNK_WIDTH;
@@ -177,7 +175,7 @@ impl Chunk {
         self.get_block(lx, ly, lz)
     }
 
-    pub fn set_block_global(&mut self, region: &mut ChunkRegion, lx: i32, ly: i32, lz: i32, block: u32) {
+    pub fn set_block_global(&mut self, region: &mut ChunkRegion, lx: i32, ly: i32, lz: i32, block: Blocktype) {
         if ly < 0 || ly >= CHUNK_HEIGHT {
             return;
         }
@@ -220,22 +218,21 @@ impl Chunk {
 
     /// Returns the top block on that coordinate and the height
     /// or AIR and 0 if there is only air.
-    pub fn get_top_block(&self, lx: i32, lz: i32) -> (u32, u32) {
-
+    pub fn get_top_block(&self, lx: i32, lz: i32) -> (Blocktype, u32) {
         for ly in (0..CHUNK_HEIGHT).rev() {
 
             let index = Chunk::voxel_index(lx, ly, lz);
             let block = self.blocktype_data[index];
 
-            if block != 0 {
-                return (block as u32, ly as u32);
+            if block != Blocktype::Air && block != Blocktype::Void {
+                return (block, ly as u32);
             }
         }
 
-        (0, 0)
+        (Blocktype::Void, 0)
     }
 
-    pub fn get_top_block_global(&self, region: &ChunkRegion, lx: i32, lz: i32) -> (u32, u32) {
+    pub fn get_top_block_global(&self, region: &ChunkRegion, lx: i32, lz: i32) -> (Blocktype, u32) {
 
         let is_top = lz >= CHUNK_WIDTH;
         let is_down = lz < 0;
@@ -286,7 +283,7 @@ impl Chunk {
 
         let index = Chunk::voxel_index(lx, ly, lz);
 
-        self.light_data[index]
+        self.blocklight_data[index]
     }
 
     pub fn set_light(&mut self, lx: i32, ly: i32, lz: i32, light: u32) {
@@ -302,7 +299,7 @@ impl Chunk {
 
         let index = Chunk::voxel_index(lx, ly, lz);
 
-        self.light_data[index] = light;
+        self.blocklight_data[index] = light;
     }
 
 
@@ -388,15 +385,56 @@ impl Chunk {
         self.set_light(lx, ly, lz, light)
     }
 
+
+    pub fn get_blockstate(&self, lx: i32, ly: i32, lz: i32) -> u8 {
+        if lx < 0
+        || ly < 0
+        || lz < 0
+        || lx >= CHUNK_WIDTH
+        || ly >= CHUNK_HEIGHT
+        || lz >= CHUNK_WIDTH
+        {
+            return 0;
+        }
+
+        let index = Chunk::voxel_index(lx, ly, lz);
+
+        self.blockstate_data[index]
+    }
+
+    pub fn set_blockstate(&mut self, lx: i32, ly: i32, lz: i32, state: u8) {
+        if lx < 0
+        || ly < 0
+        || lz < 0
+        || lx >= CHUNK_WIDTH
+        || ly >= CHUNK_HEIGHT
+        || lz >= CHUNK_WIDTH
+        {
+            return;
+        }
+
+        let index = Chunk::voxel_index(lx, ly, lz);
+
+        self.blockstate_data[index] = state;
+    }
+
+
+    pub fn clear_blocks(&mut self) {
+        self.blocktype_data.fill(Blocktype::Air);
+    }
+
+    pub fn clear_light(&mut self) {
+        self.blocklight_data.fill(0);
+    }
 }
 
 pub struct TickedBlock {
-    block: u32,
+    block: Blocktype,
     position: Vec3,
 }
 
 impl TickedBlock {
-    pub fn new(block: u32, position: Vec3) -> Self {
+    pub fn new(block: Blocktype, position: Vec3) -> Self {
         Self {
             block,
             position,

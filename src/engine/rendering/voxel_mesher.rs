@@ -7,17 +7,17 @@ use crate::engine::{rendering::{chunk_mesher, mesh::BasicMesh}, resources::textu
 pub fn voxelize_atlas(tex_atlas: &TextureAtlas) -> Vec<BasicMesh> {
     let mut items: Vec<BasicMesh> = Vec::new();
     for tile in &tex_atlas.tiles {
-        println!("{}", tile.name);
+        
         let voxel_size = 1.0 / 16.0;
         let uv = UV::new(tile.x, tile.y, tile.xm, tile.ym);
         let mut vertex_data: Vec<f32> = Vec::new();
 
-        add_face(&mut vertex_data, &uv, 2, crate::engine::rendering::mesh::VERTICES); // top
-        add_face(&mut vertex_data, &uv, 2, create_voxel_verts(Vec3::new(0.0, voxel_size * 15.0, 0.0), Vec3::new(1.0, voxel_size * 15.0, 1.0))); // bottom
+        // add top and bottom face of the voxel mesh
+        add_face(&mut vertex_data, &uv, 2, crate::engine::rendering::mesh::VERTICES);
+        add_face(&mut vertex_data, &uv, 2, create_voxel_verts(Vec3::new(0.0, voxel_size * 15.0, 0.0), Vec3::new(1.0, voxel_size * 15.0, 1.0)));
 
         let atlas_pixel_width = (tex_atlas.tiles_per_row * 16) as f32;
 
-        // turns uv aspect 0.0..1.0 to pixel coords
         let px = (uv.x * atlas_pixel_width) as u32;
         let py = (uv.y * atlas_pixel_width) as u32;
         let px_max = (uv.x_max * atlas_pixel_width) as u32;
@@ -27,8 +27,7 @@ pub fn voxelize_atlas(tex_atlas: &TextureAtlas) -> Vec<BasicMesh> {
 
             for x in 0..16 {
                 for z in 0..16 {
-                    // scans one direction of the image
-                    // and adds faces for every pixel side
+
                     let u = px + x;
                     let v = py + z;
 
@@ -71,7 +70,7 @@ pub fn voxelize_atlas(tex_atlas: &TextureAtlas) -> Vec<BasicMesh> {
                     }
                 }
             }
-        } else {println!("couldn't voxelize item meshes")}
+        } else {println!("Couldn't voxelize texture!")}
 
         items.push(BasicMesh::from_vertex_data(&vertex_data));
     }

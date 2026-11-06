@@ -1,6 +1,6 @@
 use glam::Mat4;
 
-use crate::engine::blocks::block_model::BlockModel;
+use crate::engine::block::block_model::BlockModel;
 
 
 pub const VERTICES: [f32; 108] = [
@@ -140,7 +140,7 @@ pub struct BasicModel {
 impl BasicMesh {
     pub fn from_block_model(block_model: &BlockModel) -> Self {
         let mut vertex_data: Vec<f32> = Vec::new();
-        let uvs = block_model.uvs;
+        let uvs = &block_model.uvs;
 
         for face in 0..6 {
             BasicMesh::add_face(&mut vertex_data, &uvs, face);

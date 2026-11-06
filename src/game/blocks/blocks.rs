@@ -1,56 +1,35 @@
-use glam::Vec3;
+use glam::IVec3;
 
-use crate::engine::world::world::World;
+use crate::{engine::{block::block::Block, world::world::World}, game::blocks::blocks};
 
 #[repr(u16)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Blocktype {
     Air,
+    Void,
     Grass,
     Stone,
     Sand,
     OakLog,
     Leaves,
+    MazeStone,
+    MazeTiling,
+    DungeonBrick,
+    CompressedStone,
+    Rock,
+    Bomb,
 }
 
-pub fn on_place(block: Blocktype, position: Vec3, world: &mut World) {
+pub fn on_place(block: Blocktype, pos: IVec3, world: &mut World) {
     match block {
+        Blocktype::Stone => {crate::game::blocks::block_bomb::Bomb::on_place(pos.x, pos.y, pos.z, world)}
         _ => {}
     }
 }
 
-pub fn on_break(block: Blocktype, position: Vec3, world: &mut World) {
+pub fn on_break(block: Blocktype, pos: IVec3, world: &mut World) {
     match block {
-        _ => {}
-    }
-}
-
-pub fn on_interaction(block: Blocktype) { //, Entity
-    match block {
-        _ => {}
-    }
-}
-
-pub fn on_action(block: Blocktype) {
-    match block {
-        _ => {}
-    }
-}
-
-pub fn on_tick(block: Blocktype) {
-    match block {
-        _ => {}
-    }
-}
-
-pub fn on_random_tick(block: Blocktype) {
-    match block {
-        _ => {}
-    }
-}
-
-pub fn on_update(block: Blocktype) {
-    match block {
+        Blocktype::Stone => {crate::game::blocks::block_bomb::Bomb::on_break(pos.x, pos.y, pos.z, world)}
         _ => {}
     }
 }

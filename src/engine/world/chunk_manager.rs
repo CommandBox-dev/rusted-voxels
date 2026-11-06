@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::mpsc::TryRecvError};
 
 use rand::random_range;
 
-use crate::{engine::{blocks::{block::Block, block_model::{self, BlockModel}}, core::worker::Worker, rendering::{chunk_mesher, chunk_renderer::{self, upload_chunk_mesh}}, util::utility::inside_circle, world::{chunk::{CHUNK_WIDTH, Chunk, TickedBlock}, chunk_manager::ChunkState::{Available, InWork}, chunk_region::ChunkRegion, chunk_state::{ChunkState, GenerationStep}, generation::{self, world_generator::{TerrainGenerator, WorldGenerator, Worldtype}}, lighting_system, voxel_coordinates::*, world::RENDER_DISTANCE}}, game::world::{procedural::{basic_room::BasicRoom, fallen_tree::FallenTree, oak_tree::OakTree, test_structure::TestStruct}, terrain::{flat::FlatGen, hills::HillGen}}};
+use crate::{engine::{block::block_model::{self, BlockModel}, core::worker::Worker, rendering::{chunk_mesher, chunk_renderer::{self, upload_chunk_mesh}}, util::utility::inside_circle, world::{chunk::{CHUNK_WIDTH, Chunk, TickedBlock}, chunk_manager::ChunkState::{Available, InWork}, chunk_region::ChunkRegion, chunk_state::{ChunkState, GenerationStep}, generation::{self, world_generator::{TerrainGenerator, WorldGenerator, Worldtype}}, lighting_system, voxel_coordinates::*, world::RENDER_DISTANCE}}, game::world::{procedural::{basic_room::BasicRoom, fallen_tree::FallenTree, oak_tree::OakTree, test_structure::TestStruct}, terrain::{flat::FlatGen, hills::HillGen, menger_sponge::MengerSponge}}};
 
 
 /// Instanced once per loaded dimension
@@ -148,8 +148,9 @@ impl ChunkManager {
             let chunk_generator = WorldGenerator::new(12345, Worldtype::DEFAULT);
             let mut chunk = Chunk::new(cx, cz);
 
-            chunk_generator.gen_terrain(&mut chunk, &HillGen::new(()) ); // &flat_gen);
-            //chunk_generator.gen_terrain(&mut chunk, &flat_gen);
+            // chunk_generator.gen_terrain(&mut chunk, &HillGen::new(()) );
+            chunk_generator.gen_terrain(&mut chunk, &flat_gen);
+            // chunk_generator.gen_terrain(&mut chunk, &MengerSponge::new(()));
 
             chunk
         });
@@ -323,23 +324,24 @@ impl ChunkManager {
             let mut chunk = self.take_avl_chunk(coord.x, coord.z).unwrap();
 
             let receiver = worker.execute(move || {
-
-                /*for i in 1..=random_range(0..50) { // 1..20, 10..40
-                    TerrainGenerator::generate_structure(&OakTree {}, &mut chunk, &mut region);
+                /*
+                for i in 1..=random_range(0..50) { // 1..20, 10..40
+                    WorldGenerator::generate_structure(&OakTree {}, &mut chunk, &mut region);
                 }
                 for i in 1..=random_range(0..3) { // 1..20, 10..40
-                    TerrainGenerator::generate_structure(&FallenTree {}, &mut chunk, &mut region);
-                }*/
-
-                /* 
-                for i in 1..=random_range(3..5) {
+                    WorldGenerator::generate_structure(&FallenTree {}, &mut chunk, &mut region);
+                }
+                */
+                
+                /*for i in 1..=random_range(3..5) {
                     WorldGenerator::generate_structure(&BasicRoom {}, &mut chunk, &mut region);
                 }
                 
                 for i in 1..=random_range(3..5) {
                     WorldGenerator::generate_structure(&TestStruct {}, &mut chunk, &mut region);
-                }
-                */
+                }*/
+                
+                
 
                 chunk.set_generation_step(GenerationStep::DirectLight);
 

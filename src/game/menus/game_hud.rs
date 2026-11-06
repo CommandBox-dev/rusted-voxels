@@ -1,4 +1,4 @@
-use crate::engine::{entities::character_controller::CharacterState, gui::{basic_ui::{UIAnchor::{AnchorBottom, AnchorCentered, AnchorTopRight}, UIElement, UITransformC}, elements::tex_rect::UITexturedRect}, resources::{resource_manager::ResourceManager, texture::UV}};
+use crate::engine::{entity::character_controller::CharacterState, gui::{basic_ui::{UIAnchor::{AnchorBottom, AnchorCentered, AnchorTopRight}, UIElement, UITransformC}, elements::tex_rect::UITexturedRect}, resources::{resource_manager::ResourceManager, texture::UV}};
 
 pub struct GameHUD {
     crosshair: UITexturedRect,

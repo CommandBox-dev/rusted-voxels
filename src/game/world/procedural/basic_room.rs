@@ -1,6 +1,6 @@
 use rand::random_range;
 
-use crate::{engine::world::{chunk::{CHUNK_WIDTH, Chunk}, chunk_region::ChunkRegion, structure::{ProceduralStructure, Structure}}};
+use crate::{engine::world::{chunk::{CHUNK_WIDTH, Chunk}, chunk_region::ChunkRegion, structure::{ProceduralStructure, Structure}}, game::blocks::blocks::Blocktype};
 
 pub struct BasicRoom {}
 
@@ -8,8 +8,8 @@ impl Structure for BasicRoom {
 
     fn generate(&self, chunk: &mut Chunk, region: &mut ChunkRegion) {
 
-        let wall_block = 1; // 13;
-        let floor_block = 3;
+        let wall_block = Blocktype::DungeonBrick; // 13;
+        let floor_block = Blocktype::Sand;
 
         let top = chunk.get_top_block(0, 0).1 as i32 + 1;
 
