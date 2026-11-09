@@ -9,7 +9,7 @@ use crate::{engine::{
         basic_ui::{
             UIAnchor::{AnchorBottom, AnchorBottomLeft, AnchorCentered, AnchorRight, AnchorTop, AnchorTopLeft, AnchorTopRight}, UIElement, UITransformC,
         }, menu_manager::Menu::Closed,
-    }, physics::aabb::AABB, resources::{
+    }, physic::aabb::AABB, resources::{
         resource_manager::{self, ResourceManager}, texture::{self, AtlasTile, UV},
     }, world::{self, world::World},
 }, game::menus::{debug_screen::DebugScreen, game_hud::GameHUD, main_menu::MainMenu, pause_menu::EscapeMenu, world_loading_screen::WorldLoadingScreenMenu}};

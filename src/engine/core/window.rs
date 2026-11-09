@@ -3,7 +3,7 @@ use std::time::Instant;
 use glam::Mat4;
 use glfw::*;
 
-use crate::engine::{core::input::Input, gui::menu_manager::{self, MenuManager}, rendering::camera::Camera};
+use crate::engine::{core::input::Input, gui::menu_manager::{self, MenuManager}, rendering::camera::Camera, resources::color::Color3f};
 
 pub struct GameWindow {
     pub handle: PWindow,
@@ -109,6 +109,7 @@ impl GameWindow {
     }
 
     pub fn poll_events(&mut self, input: &mut Input, camera: &mut Camera, menu_manager: &mut MenuManager) {
+        
         self.glfw.poll_events();
 
         let now = Instant::now();
@@ -144,6 +145,12 @@ impl GameWindow {
 
         unsafe {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+        }
+    }
+
+    pub fn set_clear_color(&self, color: &Color3f) {
+        unsafe {
+            gl::ClearColor(color.r, color.g, color.b, 1.0);
         }
     }
 

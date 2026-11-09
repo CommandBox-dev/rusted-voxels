@@ -3,15 +3,17 @@ use std::{ops::Add, sync::{Arc, RwLock, mpsc::TryRecvError}};
 use glam::*;
 use rand::{rand_core::block, random_range, seq::IndexedRandom};
 
-use crate::{engine::{block::block_model::BlockModel, core::worker::Worker, world::{chunk::{CHUNK_HEIGHT, CHUNK_WIDTH}, chunk_manager::{self, ChunkManager}, chunk_region::{self, ChunkRegion}, generation::world_generator::Dimension, lighting_system::{self, QueuedLight}, voxel_coordinates::ChunkCoord}}, game::blocks::blocks::Blocktype::{self, MazeStone}}
+use crate::{engine::{block::block_model::BlockModel, core::worker::Worker, resources::color::Color3f, world::{chunk::{CHUNK_HEIGHT, CHUNK_WIDTH}, chunk_manager::{self, ChunkManager}, chunk_region::{self, ChunkRegion}, generation::world_generator::Dimension, lighting_system::{self, QueuedLight}, voxel_coordinates::ChunkCoord}}, game::blocks::blocks::Blocktype::{self, MazeStone}}
 ;
 
-pub const RENDER_DISTANCE: u32 = 10;
+pub const RENDER_DISTANCE: u32 = 12;
 pub const RENDER_AREA: u32 = RENDER_DISTANCE * RENDER_DISTANCE;
 
 pub struct World {
     pub chunk_manager: ChunkManager,
     pub dimension: Dimension,
+    pub sky_color: Color3f,
+    pub fog_color: Color3f,
 }
 
 impl World {
@@ -19,6 +21,14 @@ impl World {
         Self {
             chunk_manager: ChunkManager::new(),
             dimension: Dimension::OVERWORLD,
+            //sky_color: Color3f::new(0.511, 0.433, 0.972),
+            //fog_color: Color3f::splat(0.8),
+
+            //sky_color: Color3f::new(0.511, 0.433, 0.972),
+            //fog_color: Color3f::new(0.511, 0.433, 0.972),
+
+            sky_color: Color3f::new(0.55078125, 0.29296875, 0.29296875),
+            fog_color: Color3f::splat(0.8),
         }
     }
 

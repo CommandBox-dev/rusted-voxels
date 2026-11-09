@@ -1,6 +1,6 @@
 use glam::{IVec3, Vec2, Vec3};
 
-use crate::engine::{rendering::chunk_mesher::{FACE_LEFT, FACE_RIGHT, FACE_TOP, FACE_BOTTOM, FACE_FRONT, FACE_BACK}, resources::texture::{AtlasTile, UV}};
+use crate::engine::{physic::aabb::AABB, rendering::chunk_mesher::{FACE_BACK, FACE_BOTTOM, FACE_FRONT, FACE_LEFT, FACE_RIGHT, FACE_TOP}, resources::texture::{AtlasTile, UV}};
 
 #[derive(Clone)]
 pub struct BlockModel {
@@ -12,11 +12,12 @@ pub struct BlockModel {
     // Will give transparent blocks the ability
     // to cull (only) their own blocktype
     pub cull_own_blocktype: bool,
-
+    
+    pub aabbs: Vec<AABB>,
     // Indicates the number of cubes a CubeModel is
     // made of and the number of faces for a Custom model
     pub parts: u32,
-    // Will leter be ignored if shape is None or Voxel
+    // Will later be ignored if shape is None or Voxel
     pub uvs: Vec<f32>,
     pub verts: Vec<f32>,
 }
@@ -61,6 +62,7 @@ impl BlockModel {
             occlusion: BlockOcclusion::default(),
             cullable_faces: Vec::new(),
             cull_own_blocktype: true,
+            aabbs: vec![AABB::new(Vec3::splat(0.0), Vec3::splat(16.0))],
             parts: 0,
             verts: Vec::new(),
             uvs: face_uvs,
@@ -89,6 +91,7 @@ impl BlockModel {
             occlusion: BlockOcclusion::default(),
             cullable_faces: Vec::new(),
             cull_own_blocktype: true,
+            aabbs: vec![AABB::new(Vec3::splat(0.0), Vec3::splat(16.0))],
             parts: 0,
             verts: Vec::new(),
             uvs: face_uvs,
@@ -115,6 +118,7 @@ impl BlockModel {
             occlusion: BlockOcclusion::default(),
             cullable_faces: Vec::new(),
             cull_own_blocktype: true,
+            aabbs: vec![AABB::new(Vec3::splat(0.0), Vec3::splat(16.0))],
             parts: 0,
             verts: Vec::new(),
             uvs: face_uvs,
@@ -127,34 +131,47 @@ impl BlockModel {
             occlusion: BlockOcclusion::default(),
             cullable_faces: Vec::new(),
             cull_own_blocktype: true,
+            aabbs: Vec::new(),
             parts: 0,
             verts: Vec::new(),
             uvs: Vec::new(),
         }
     }
 
-    pub fn new_cube_mesh(atlas_tile: &AtlasTile) -> Self {
+    pub fn new_cube_mesh(atlas_tile: &AtlasTile, cubes: &[Cube]) -> Self {
 
         let mut model = Self {
             shape: BlockShape::CubeMesh,
             occlusion: BlockOcclusion::default(),
             cullable_faces: Vec::new(),
             cull_own_blocktype: true,
+            aabbs: Vec::new(),
             parts: 0,
             verts: Vec::new(),
             uvs: Vec::new(),
         };
 
-        // Self::add_cube(&mut model, atlas_tile, &IVec3::new(0, 0, 0), &IVec3::new(16, 8, 16));
-        // Self::add_cube(&mut model, atlas_tile, &IVec3::new(0, 8, 8), &IVec3::new(16, 16, 16));
+        // Self::add_cube(&mut model, atlas_tile, &IVec3::new(6, 0, 6), &IVec3::new(10, 14, 10));
+        // Self::add_cube(&mut model, atlas_tile, &IVec3::new(2, 7, 6), &IVec3::new(14, 11, 10));
 
-        Self::add_cube(&mut model, atlas_tile, &IVec3::new(0, 0, 0), &IVec3::new(2, 14, 2));
-        Self::add_cube(&mut model, atlas_tile, &IVec3::new(14, 0, 0), &IVec3::new(16, 14, 2));
-        Self::add_cube(&mut model, atlas_tile, &IVec3::new(0, 0, 14), &IVec3::new(2, 14, 16));
-        Self::add_cube(&mut model, atlas_tile, &IVec3::new(14, 0, 14), &IVec3::new(16, 14, 16));
+        //Self::add_cube(&mut model, atlas_tile, &IVec3::new(1, 0, 6), &IVec3::new(15, 14, 10));
+        //Self::add_cube(&mut model, atlas_tile, &IVec3::new(4, 12, 6), &IVec3::new(12, 16, 10));
 
-        Self::add_cube(&mut model, atlas_tile, &IVec3::new(0, 14, 0), &IVec3::new(16, 16, 16));
-        
+        for cube in cubes {
+            Self::add_cube(
+                &mut model,
+                atlas_tile,
+                &cube.min_corner,
+                &cube.max_corner,
+            );
+            model.aabbs.push(
+                AABB::new(
+                    cube.min_corner.clone().as_vec3(),
+                    cube.max_corner.clone().as_vec3(),
+                )
+            );
+        }
+
         model
     }
     
@@ -357,6 +374,7 @@ impl BlockModel {
 // model modifying block state
 // uv modyfing block state
 
+// random model / texture per block
 
 // orientate: top down: (y 0, 90, 180, 270) / log: (0, 90x, 90z)
 // mirror y
@@ -440,6 +458,21 @@ impl FaceMask {
             let mask = ((1u64 << width) - 1) << offset;
             
             self.bits[word] |= mask;
+        }
+    }
+}
+
+#[derive(Clone, PartialEq)]
+pub struct Cube {
+    min_corner: IVec3,
+    max_corner: IVec3,
+}
+
+impl Cube {
+    pub fn new(min_corner: IVec3, max_corner: IVec3) -> Self {
+        Self {
+            min_corner,
+            max_corner,
         }
     }
 }

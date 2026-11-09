@@ -135,58 +135,58 @@ fn create_voxel_verts(min_corner: Vec3, max_corner: Vec3) -> [f32; 108] {
 
     
     [
-    // right
-    xm, y, zm,
-    xm, y, z,
-    xm, ym, z,
+        // right
+        xm, y, zm,
+        xm, y, z,
+        xm, ym, z,
 
-    xm, y, zm,
-    xm, ym, z,
-    xm, ym, zm,
+        xm, y, zm,
+        xm, ym, z,
+        xm, ym, zm,
 
-    // left
-    x, y, z,
-    x, y, zm,
-    x, ym, zm,
+        // left
+        x, y, z,
+        x, y, zm,
+        x, ym, zm,
 
-    x, y, z,
-    x, ym, zm,
-    x, ym, z,
+        x, y, z,
+        x, ym, zm,
+        x, ym, z,
 
-    // top
-    x, ym, zm,
-    xm, ym, zm,
-    xm, ym, z,
+        // top
+        x, ym, zm,
+        xm, ym, zm,
+        xm, ym, z,
 
-    x, ym, zm,
-    xm, ym, z,
-    x, ym, z,
+        x, ym, zm,
+        xm, ym, z,
+        x, ym, z,
 
-    // bottom
-    x, y, z,
-    xm, y, z,
-    xm, y, zm,
+        // bottom
+        x, y, z,
+        xm, y, z,
+        xm, y, zm,
 
-    x, y, z,
-    xm, y, zm,
-    x, y, zm,
+        x, y, z,
+        xm, y, zm,
+        x, y, zm,
 
-    // front
-    x, y, zm,
-    xm, y, zm,
-    xm, ym, zm,
+        // front
+        x, y, zm,
+        xm, y, zm,
+        xm, ym, zm,
 
-    x, y, zm,
-    xm, ym, zm,
-    x, ym, zm,
+        x, y, zm,
+        xm, ym, zm,
+        x, ym, zm,
 
-    // back
-    xm, y, z,
-    x, y, z,
-    x, ym, z,
+        // back
+        xm, y, z,
+        x, y, z,
+        x, ym, z,
 
-    xm, y, z,
-    x, ym, z,
-    xm, ym, z
+        xm, y, z,
+        x, ym, z,
+        xm, ym, z
     ]
 }

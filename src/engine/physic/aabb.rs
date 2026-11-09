@@ -3,6 +3,7 @@ use glam::Vec3;
 
 const EPSILON: f32 = 0.0001;
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct AABB {
     pub min: Vec3,
     pub max: Vec3,
@@ -18,6 +19,13 @@ impl AABB {
         min: Vec3::new(-0.3, -1.60, -0.3),
         max: Vec3::new(0.3, 0.20, 0.3),
     };
+
+    pub fn new(min_corner: Vec3, max_corner: Vec3,) -> Self {
+        Self {
+            min: min_corner,
+            max: max_corner,
+        }
+    }
 
     pub fn intersects(&self, other: &Self) -> bool {
         self.min.cmple(other.max).all() && other.min.cmple(self.max).all()

@@ -1,7 +1,8 @@
+use glam::IVec3;
 use kira::sound::static_sound::StaticSoundData;
 
 use crate::engine::{
-    self, block::block_model::BlockModel, rendering::{mesh::BasicMesh, voxel_mesher::voxelize_atlas}, resources::{shader::*, texture::*},
+    self, block::block_model::{BlockModel, Cube}, rendering::{mesh::BasicMesh, voxel_mesher::voxelize_atlas}, resources::{shader::*, texture::*},
 };
 
 pub struct ResourceManager {
@@ -106,10 +107,27 @@ impl ResourceManager {
 
         manual.block_models = vec![
             BlockModel::new_block(ore),
-            BlockModel::new_block_sides_top_bottom(grass_side, top, cobblestone),
-            //BlockModel::new_block(cobblestone),
-            //BlockModel::new_block(cobblestone),
-            BlockModel::new_cube_mesh(cobblestone),
+            BlockModel::new_block_sides_top_bottom(grass_side, grass_top, cobblestone),
+            BlockModel::new_block(cobblestone),
+            BlockModel::new_block(cobblestone),
+            BlockModel::new_cube_mesh(
+                cobblestone,
+                &[
+                    Cube::new(IVec3::new(0, 0, 0), IVec3::new(16, 8, 16)),
+                    Cube::new(IVec3::new(0, 8, 8), IVec3::new(16, 16, 16)),
+                ]
+            ),
+            BlockModel::new_cube_mesh(
+                log,
+                &[
+                    Cube::new(IVec3::new(0, 0, 0), IVec3::new(2, 14, 2)),
+                    Cube::new(IVec3::new(14, 0, 0), IVec3::new(16, 14, 2)),
+                    Cube::new(IVec3::new(0, 0, 14), IVec3::new(2, 14, 16)),
+                    Cube::new(IVec3::new(14, 0, 14), IVec3::new(16, 14, 16)),
+
+                    Cube::new(IVec3::new(0, 14, 0), IVec3::new(16, 16, 16)),
+                ]
+            ),
             BlockModel::new_block(sand),
             BlockModel::new_block(log),
             BlockModel::new_block(leaves),

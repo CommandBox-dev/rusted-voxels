@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::mpsc::TryRecvError};
 
 use rand::random_range;
 
-use crate::{engine::{block::block_model::{self, BlockModel}, core::worker::Worker, rendering::{chunk_mesher, chunk_renderer::{self, upload_chunk_mesh}}, util::utility::inside_circle, world::{chunk::{CHUNK_WIDTH, Chunk, TickedBlock}, chunk_manager::ChunkState::{Available, InWork}, chunk_region::ChunkRegion, chunk_state::{ChunkState, GenerationStep}, generation::{self, world_generator::{TerrainGenerator, WorldGenerator, Worldtype}}, lighting_system, voxel_coordinates::*, world::RENDER_DISTANCE}}, game::world::{procedural::{basic_room::BasicRoom, fallen_tree::FallenTree, oak_tree::OakTree, test_structure::TestStruct}, terrain::{flat::FlatGen, hills::HillGen, menger_sponge::MengerSponge}}};
+use crate::{engine::{block::block_model::{self, BlockModel}, core::worker::Worker, rendering::{chunk_mesher, chunk_renderer::{self, upload_chunk_mesh}}, util::utility::inside_circle, world::{chunk::{CHUNK_WIDTH, Chunk, TickedBlock}, chunk_manager::ChunkState::{Available, InWork}, chunk_region::ChunkRegion, chunk_state::{ChunkState, GenerationStep}, generation::{self, world_generator::{TerrainGenerator, WorldGenerator, Worldtype}}, lighting_system, voxel_coordinates::*, world::RENDER_DISTANCE}}, game::world::{procedural::{basic_room::BasicRoom, fallen_tree::FallenTree, oak_tree::OakTree, test_structure::TestStruct}, terrain::{flat::FlatGen, hills::HillGen, menger_sponge::MengerSponge, mountains::MountainGen}}};
 
 
 /// Instanced once per loaded dimension
@@ -149,8 +149,9 @@ impl ChunkManager {
             let mut chunk = Chunk::new(cx, cz);
 
             // chunk_generator.gen_terrain(&mut chunk, &HillGen::new(()) );
-            chunk_generator.gen_terrain(&mut chunk, &flat_gen);
+            //chunk_generator.gen_terrain(&mut chunk, &flat_gen);
             // chunk_generator.gen_terrain(&mut chunk, &MengerSponge::new(()));
+            chunk_generator.gen_terrain(&mut chunk, &MountainGen::new( () ));
 
             chunk
         });

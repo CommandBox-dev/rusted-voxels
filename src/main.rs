@@ -29,11 +29,11 @@ use crate::engine::gui::basic_ui::UITransformC;
 use crate::engine::gui::menu_manager;
 use crate::engine::gui::menu_manager::Menu;
 use crate::engine::gui::menu_manager::MenuManager;
-use crate::engine::physics::aabb::AABB;
-use crate::engine::physics::aabb::move_and_collide;
-use crate::engine::physics::aabb::*;
-use crate::engine::physics::aabb::*;
-use crate::engine::physics::*;
+use crate::engine::physic::aabb::AABB;
+use crate::engine::physic::aabb::move_and_collide;
+use crate::engine::physic::aabb::*;
+use crate::engine::physic::aabb::*;
+use crate::engine::physic::*;
 use crate::engine::rendering::mesh::BasicMesh;
 use crate::engine::rendering::{camera::*, mesh};
 use crate::engine::rendering::chunk_mesher;
@@ -41,6 +41,7 @@ use crate::engine::rendering::renderering_server::RenderingServer;
 use crate::engine::resources::resource_manager::ResourceManager;
 use crate::engine::resources::shader::*;
 use crate::engine::resources::texture::*;
+use crate::engine::storage::container::ItemStack;
 use crate::engine::world::chunk::*;
 use crate::engine::world::chunk_manager::ChunkLoader;
 use crate::engine::world::generation::world_generator::TerrainGenerator;
@@ -66,6 +67,13 @@ fn main() {
 
     let mut world: Option<World> = None;
     let mut character_controller = CharacterState::new();
+    
+    for i in 0..10 {
+        character_controller.inventory
+        .add_item(&ItemStack::new(i + 1, 99));
+    }
+    
+
     let mut camera = Camera::new(
         Vec3::ZERO,
         0.0,
@@ -139,7 +147,8 @@ fn main() {
 
     //audio_manager.play_sound_flat(resource_manager.white_grass_music.clone());
 
-    let debug_mesh = BasicMesh::new_cube_pos_uv();
+    //let debug_mesh = BasicMesh::new_cube_pos_uv();
+    let mut debug_mesh = BasicMesh::from_aabb(&resource_manager.block_models[0].aabbs);
     let entity_mesh = BasicMesh::new_cube_pos_uv();
 
     'game_loop: while !window.should_close() {
@@ -177,6 +186,19 @@ fn main() {
         }
         
         if let Some(world) = &world {
+            let target = world.get_block(
+                character_controller.target_block.x,
+                character_controller.target_block.y,
+                character_controller.target_block.z,
+            );
+            if target != Blocktype::Air {
+                debug_mesh.destroy();
+                debug_mesh = BasicMesh::from_aabb(
+                    &resource_manager.block_models[target as usize - 1].aabbs
+                );
+            }
+
+            window.set_clear_color(&world.sky_color);
             if world.chunk_manager.chunks_loaded >= world::world::RENDER_AREA - 100
             && menu_manager.selected_menu == Menu::WorldLoadingScreen
             {

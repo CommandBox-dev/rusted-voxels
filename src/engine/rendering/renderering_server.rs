@@ -28,6 +28,9 @@ pub struct RenderingServer {
     chunk_proj_loc: i32,
     chunk_tex_loc: i32,
     chunk_fade_loc: i32,
+    chunk_fog_start_loc: i32,
+    chunk_fog_end_loc: i32,
+    chunk_fog_color_loc: i32,
     // wireframe shader
     wire_face_color_loc: i32,
     wire_line_color_loc: i32,
@@ -54,6 +57,9 @@ impl RenderingServer {
             chunk_proj_loc: 0,
             chunk_tex_loc: 0,
             chunk_fade_loc: 0,
+            chunk_fog_color_loc: 0,
+            chunk_fog_start_loc: 0,
+            chunk_fog_end_loc: 0,
 
             wire_face_color_loc: 0,
             wire_line_color_loc: 0,
@@ -104,6 +110,15 @@ impl RenderingServer {
         self.chunk_fade_loc = resource_manager
             .chunk_shader
             .get_unif_loc(c"u_fade".as_ptr());
+        self.chunk_fog_color_loc = resource_manager
+            .chunk_shader
+            .get_unif_loc(c"fog_color".as_ptr());
+        self.chunk_fog_start_loc = resource_manager
+            .chunk_shader
+            .get_unif_loc(c"fog_start".as_ptr());
+        self.chunk_fog_end_loc = resource_manager
+            .chunk_shader
+            .get_unif_loc(c"fog_end".as_ptr());
 
         // wireframe shader
         self.wire_line_color_loc = resource_manager
@@ -269,10 +284,21 @@ impl RenderingServer {
 
             gl::Uniform1i(self.chunk_tex_loc, 0);
 
+            gl::Uniform1f(self.chunk_fog_start_loc, 8.0 * 16.0);
+            gl::Uniform1f(self.chunk_fog_end_loc, 30.0 * 16.0);
+            
             if let Some(world) = world {
+                gl::Uniform3f(
+                    self.chunk_fog_color_loc,
+                    world.fog_color.r,
+                    world.fog_color.g,
+                    world.fog_color.b,
+                );
                 rendering::chunk_renderer::render_chunks(
                     world, self.chunk_model_loc, self.chunk_fade_loc
                 );
+            } else {
+                gl::Uniform3f(self.chunk_fog_color_loc, 0.8, 0.8, 0.8);
             }
 
 

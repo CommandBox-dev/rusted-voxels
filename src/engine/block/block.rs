@@ -16,7 +16,7 @@ pub trait Block {
 
     fn on_random_tick() {}
 
-    fn on_block_update() {}
+    fn on_block_update(x: i32, y: i32, z: i32, world: &mut World) {}
 
     fn is_ticked() -> bool { false }
 
@@ -37,4 +37,10 @@ pub trait Block {
     fn get_friction() -> f32 { 1.0 }
 
     fn get_bounciness() -> f32 { 0.0 }
+}
+
+pub struct BlockDefinition {
+    //pub name: String,
+    //pub 
+    //pub illuminace: u32,
 }
