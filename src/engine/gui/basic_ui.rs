@@ -1,12 +1,13 @@
 use crate::engine::{
-    core::window::GameWindow, gui::basic_ui::{
-        self,
-        UIAnchor::{
-            AnchorBottomLeft, AnchorBottom, AnchorBottomRight, AnchorCentered, AnchorLeft,
-            AnchorRight, AnchorTopLeft, AnchorTop, AnchorTopRight,
+    core::{input::Input, window::GameWindow}, gui::basic_ui::{
+        self, UIAnchor::{
+            AnchorBottom, AnchorBottomLeft, AnchorBottomRight, AnchorCentered, AnchorLeft, AnchorRight, AnchorTop, AnchorTopLeft, AnchorTopRight,
         },
     }, resources::{resource_manager::{self, ResourceManager}, texture::{AtlasTile, UV}},
 };
+
+pub const UI_TEX_PIXEL_SIZE: f32 = 256.0;
+pub const UI_SCALE: f32 = 100.0;
 
 // Components
 #[derive(Clone, Debug)]
@@ -21,6 +22,10 @@ pub struct UITransformC {
 
     pub visual_x: i32,
     pub visual_y: i32,
+
+    pub hovered: bool,
+    pub mouse_enter: bool,
+    pub mouse_exit: bool,
 }
 
 impl UITransformC {
@@ -36,6 +41,10 @@ impl UITransformC {
 
             visual_x: 0,
             visual_y: 0,
+
+            hovered: false,
+            mouse_enter: false,
+            mouse_exit: false,
         }
     }
 
@@ -125,6 +134,23 @@ impl UITransformC {
             }
         }
     }
+
+    fn set(&mut self, other: &Self) {
+        self.offset_x = other.offset_x;
+        self.offset_y = other.offset_y;
+        self.width = other.width;
+        self.height = other.height;
+        self.anchor = other.anchor;
+        self.visual_x = other.visual_x;
+        self.visual_y = other.visual_y;
+    }
+
+    pub(super) fn is_hovered(&self, mx: u32, my: u32) -> bool {
+           mx as i32 >= self.visual_x
+        && my as i32 >= self.visual_y
+        && mx as i32 <= self.visual_x + self.width as i32
+        && my as i32 <= self.visual_y + self.height as i32
+    }
 }
 
 pub struct UIModelC {
@@ -165,6 +191,7 @@ impl UIModelC {
 
     pub fn upload(&mut self, mesh: &[f32]) {
         self.destroy();
+        self.vertex_count = (mesh.len() / 4) as u32;
 
         unsafe {
             gl::GenVertexArrays(1, &mut self.vao);
@@ -208,6 +235,31 @@ impl UIModelC {
             gl::BindVertexArray(0);
         }
     }
+
+    /// Returns an array of
+    /// vertices that form a rectangle
+    /// with the given size, position,
+    /// and texture coordinates.
+    pub const fn get_rect_verts(
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        u: f32,
+        v: f32,
+        uw: f32,
+        vh: f32,
+    ) -> [f32; 24] {
+        [
+            x + w, y + h, uw, vh,
+            x + w, y, uw, v,
+            x, y, u, v,
+
+            x, y, u, v,
+            x, y + h, u, vh,
+            x + w, y + h, uw, vh,
+        ]
+    }
 }
 
 pub struct UIContainerC {
@@ -228,18 +280,59 @@ pub trait UIElement {
 
     fn get_mut_transform(&mut self) -> &mut UITransformC;
 
-    fn cursor_update(&mut self, mx: u32, my: u32, down: bool);
+    // fn get_model() -> &UIModelC {todo!();}
 
-    fn is_hovered(&self, mx: u32, my: u32) -> bool {
-        let t = self.get_transform();
-        
-           mx as i32 >= t.visual_x
-        && my as i32 >= t.visual_y
-        && mx as i32 <= t.visual_x + t.width as i32
-        && my as i32 <= t.visual_y + t.height as i32
+    fn update(&mut self, input: &Input) {
+        self.update_hover(input);
+    }
+
+    fn update_hover(&mut self, input: &Input) {
+        let mut transform = self.get_mut_transform();
+        let hover = transform.is_hovered(
+            input.mouse_x,
+            input.mouse_y
+        );
+
+        transform.mouse_enter = false;
+        transform.mouse_exit = false;
+
+        if hover {
+            if !transform.hovered {
+                transform.mouse_enter = true;
+            }
+        } else {
+            if transform.hovered {
+                transform.mouse_exit = true;
+            }
+        }
+        transform.hovered = hover;
     }
 
     fn draw(&self) {}
+
+    fn hovered(&self) -> bool {
+        self.get_transform().hovered
+    }
+
+    fn in_focus(&self) -> bool {
+        todo!()
+    }
+
+    fn mouse_entered(&self) -> bool {
+        self.get_transform().mouse_enter
+    }
+
+    fn mouse_exited(&self) -> bool {
+        self.get_transform().mouse_exit   
+    }
+
+    fn focus_entered(&self) {
+        todo!()
+    }
+
+    fn focus_exited(&self) {
+        todo!()
+    }
 }
 
 pub trait UIContainer {
@@ -247,14 +340,14 @@ pub trait UIContainer {
 
     fn get_mut_elements(&mut self) -> &mut UIContainerC;
 
-    fn update_container_items(&mut self, mx: u32, my: u32) {
+    /*fn update_container_items(&mut self, input: &Input) {
         let elements = &self.get_elements().elements;
         for item in elements {
-            if item.is_hovered(mx, my) {
+            if item.is_hovered() {
                 return;
             }
         }
-    }
+    }*/
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -309,25 +402,10 @@ pub struct UIProgressBar {
 pub struct UIOptionButton {
     transform: UITransformC,
 }
-pub struct UISlider {
-    transform: UITransformC,
-}
 pub struct UITextBox {
     transform: UITransformC,
 }
 // Layout
-struct UIPanel {
-    transform: UITransformC,
-}
 pub struct UISeperator {
-    transform: UITransformC,
-}
-// Inventory
-// a single inventory slot with a textured background
-pub struct UIContainerSlot {
-    transform: UITransformC,
-}
-// a grid of basic inventory slots
-pub struct UIContainerGrid {
     transform: UITransformC,
 }

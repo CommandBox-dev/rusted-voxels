@@ -7,6 +7,8 @@ use glam::Quat;
 use glam::{IVec3, Mat4, Vec2, Vec3};
 use glfw::{Action, Context, Key, MouseButton, ffi::glfwGetFramebufferSize};
 use rand::rand_core::utils::Word;
+use rand::{random, random_range};
+use strum::IntoEnumIterator;
 
 use crate::engine::animation::animation::PlaybackMode::{self, Once, PingPong};
 use crate::engine::animation::animation::{Animation, AnimationTrack, Bone, QuatKeyframe, VecKeyframe};
@@ -17,7 +19,7 @@ use crate::engine::block::block_model::*;
 use crate::engine::core::input::Input;
 use crate::engine::core::window::GameWindow;
 use crate::engine::core::worker::Worker;
-use crate::engine::entity::character_controller::CharacterState;
+use crate::engine::entity::character_controller::{self, CharacterState};
 use crate::engine::gui::basic_ui::UIAnchor::AnchorBottomLeft;
 use crate::engine::gui::basic_ui::UIAnchor::AnchorCentered;
 use crate::engine::gui::basic_ui::UIAnchor::AnchorLeft;
@@ -29,6 +31,7 @@ use crate::engine::gui::basic_ui::UITransformC;
 use crate::engine::gui::menu_manager;
 use crate::engine::gui::menu_manager::Menu;
 use crate::engine::gui::menu_manager::MenuManager;
+use crate::engine::item::item::{ItemInstance, ItemInstanceData};
 use crate::engine::physic::aabb::AABB;
 use crate::engine::physic::aabb::move_and_collide;
 use crate::engine::physic::aabb::*;
@@ -41,7 +44,6 @@ use crate::engine::rendering::renderering_server::RenderingServer;
 use crate::engine::resources::resource_manager::ResourceManager;
 use crate::engine::resources::shader::*;
 use crate::engine::resources::texture::*;
-use crate::engine::storage::container::ItemStack;
 use crate::engine::world::chunk::*;
 use crate::engine::world::chunk_manager::ChunkLoader;
 use crate::engine::world::generation::world_generator::TerrainGenerator;
@@ -49,6 +51,7 @@ use crate::engine::world::voxel_coordinates::BlockCoord;
 use crate::engine::world::world::*;
 use crate::engine::*;
 use crate::game::blocks::blocks::Blocktype;
+use crate::game::data::game_data::GameData;
 use crate::game::world::generation::Dimension::Flat;
 use crate::game::world::terrain::flat::{FlatGen, TerrainLayer};
 
@@ -57,22 +60,27 @@ fn main() {
     let mut input = Input::new(&window);
 
     let mut resource_manager = ResourceManager::new();
-    let mut menu_manager = MenuManager::new(&window);
     let mut audio_manager = AudioServer::new();
     let mut rendering_server = RenderingServer::new();
     let mut animation_player = AnimationPlayer::new();
+    let mut game_data = GameData::new();
     
     let worker = Worker::new(8);
     let meshing_worker = Worker::new(5);
-
+    
     let mut world: Option<World> = None;
     let mut character_controller = CharacterState::new();
     
     for i in 0..10 {
         character_controller.inventory
-        .add_item(&ItemStack::new(i + 1, 99));
+        .add_item(&ItemInstance::new(i + 1, random_range(0..200), ItemInstanceData::Placeholder));
     }
-    
+
+    let mut menu_manager = MenuManager::new(&window, &character_controller);
+
+    for blocktype in Blocktype::iter() {
+        game_data.items.register_block(blocktype);
+    }
 
     let mut camera = Camera::new(
         Vec3::ZERO,
@@ -154,7 +162,7 @@ fn main() {
     'game_loop: while !window.should_close() {
         window.poll_events(&mut input, &mut camera, &mut menu_manager);
 
-        if menu_manager.main_menu.button1.pressed && world.is_none() {
+        if menu_manager.main_menu.button1.activated() && world.is_none() {
             world = Some(World::new());
             window.set_cursor_mode(glfw::CursorMode::Disabled);
         }
@@ -178,10 +186,11 @@ fn main() {
                 &input,
                 world,
                 &mut window,
-                &menu_manager,
+                &mut menu_manager,
                 &mut audio_manager,
                 &resource_manager,
                 &mut playing_anim,
+                &game_data,
             );
         }
         
@@ -194,7 +203,7 @@ fn main() {
             if target != Blocktype::Air {
                 debug_mesh.destroy();
                 debug_mesh = BasicMesh::from_aabb(
-                    &resource_manager.block_models[target as usize - 1].aabbs
+                    &resource_manager.block_models[target as usize].aabbs
                 );
             }
 
@@ -207,7 +216,7 @@ fn main() {
             }
         }
 
-        menu_manager.update(&input, &mut window, &character_controller, world.as_ref());
+        menu_manager.update(&input, &mut window, &mut character_controller, world.as_ref());
 
         rendering_server.render(
             &resource_manager,
@@ -221,6 +230,7 @@ fn main() {
             &window,
             &one_bone_skeleton.bones[0],
             &entity_mesh,
+            &game_data,
         );
 
         window.swap_buffers();

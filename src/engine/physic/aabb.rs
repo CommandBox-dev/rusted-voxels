@@ -38,7 +38,7 @@ impl AABB {
 }
 
 pub struct CollisionResult {
-    pub is_on_floor: bool,
+    pub grounded: bool,
     // collided
     // slide collisions
 }
@@ -50,7 +50,7 @@ pub fn move_and_collide(
     velocity: &mut Vec3,
     hit_box: &AABB,
 ) -> CollisionResult {
-    let mut result = CollisionResult { is_on_floor: false };
+    let mut result = CollisionResult { grounded: false };
 
     // TODO: calculate axis with the heighest velocity first
     velocity.x = move_axis_x(world, position, velocity.x, hit_box, &mut result);
@@ -171,7 +171,7 @@ fn move_axis_y(
                 for by in (end..=start).rev() {
                     for z in min_block_z..=max_block_z {
                         if world.get_block(x, by, z) != Blocktype::Air {
-                            result.is_on_floor = true;
+                            result.grounded = true;
                             let correction = (by + 1) as f32 - min_y;
                             return if correction > 0.0 { 0.0 } else { correction };
                         }

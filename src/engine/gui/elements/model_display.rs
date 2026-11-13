@@ -16,8 +16,6 @@ impl UIElement for UIModelDisplay {
     fn get_mut_transform(&mut self) -> &mut UITransformC {
         &mut self.transform
     }
-
-    fn cursor_update(&mut self, mx: u32, my: u32, down: bool) {}
 }
 
 impl UIModelDisplay {

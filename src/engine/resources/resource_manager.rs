@@ -63,9 +63,9 @@ impl ResourceManager {
                 "./res/shaders/wireframe.frag",
             ),
 
-            place_sound: StaticSoundData::from_file("./res/audio/place.mp3")
+            place_sound: StaticSoundData::from_file("./res/audio/sfx/block/place/sand.mp3")
                 .expect("Failed to load sound from file"),
-            break_sound: StaticSoundData::from_file("./res/audio/break.mp3")
+            break_sound: StaticSoundData::from_file("./res/audio/sfx/block/place/sand.mp3")
                 .expect("Failed to load sound from file"),
             white_grass_music: None, //StaticSoundData::from_file("./res/audio/voxel_white_grass.mp3")
                 //.expect("Failed to load sound from file"),
@@ -104,9 +104,11 @@ impl ResourceManager {
         let rock = manual.tile_atlas.get_tile(String::from("cracked_stone_floor"));
         let compressed = manual.tile_atlas.get_tile(String::from("compressed_stone"));
         let top = manual.tile_atlas.get_tile(String::from("grid"));
+        let planks = manual.tile_atlas.get_tile(String::from("planks"));
 
         manual.block_models = vec![
-            BlockModel::new_block(ore),
+            BlockModel::new_empty(),
+            BlockModel::new_block(planks),
             BlockModel::new_block_sides_top_bottom(grass_side, grass_top, cobblestone),
             BlockModel::new_block(cobblestone),
             BlockModel::new_block(cobblestone),

@@ -54,14 +54,9 @@ impl MainMenu {
         let mx = (window.fb_width as f32 * (input.mouse_x as f32 / window.width as f32)) as u32;
         let my = (window.fb_height as f32 * (input.mouse_y as f32 / window.height as f32)) as u32;
 
-        self.button1
-            .cursor_update(mx, my, input.is_mouse_button_down(MouseButton::Left as i32));
-        self.button2.cursor_update(
-            mx,
-            my,
-            input.is_mouse_button_pressed(MouseButton::Left as i32),
-        );
-        if self.button1.pressed {
+        self.button1.update(input);
+        self.button2.update(input);
+        if self.button1.activated() {
             return Some(Menu::WorldLoadingScreen);
         }
         None

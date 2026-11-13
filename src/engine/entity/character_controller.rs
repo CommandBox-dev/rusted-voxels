@@ -8,6 +8,7 @@ use crate::engine::audio::audio_server::AudioServer;
 use crate::engine::core::input::Input;
 use crate::engine::core::window::GameWindow;
 use crate::engine::gui::menu_manager::{Menu, MenuManager};
+use crate::engine::item::item::ItemData;
 use crate::engine::physic::aabb::{AABB, move_and_collide};
 use crate::engine::physic::raycast;
 use crate::engine::rendering::camera::Camera;
@@ -20,6 +21,7 @@ use crate::engine::world::{chunk_region, lighting_system};
 use crate::engine::world::world::World;
 use crate::game;
 use crate::game::blocks::blocks::Blocktype;
+use crate::game::data::game_data::GameData;
 
 
 pub struct CharacterState {
@@ -30,6 +32,7 @@ pub struct CharacterState {
     pub velocity: Vec3,
     pub is_on_floor: bool,
     pub is_flying: bool,
+    pub inventory_open: bool,
 }
 
 impl CharacterState {
@@ -42,6 +45,7 @@ impl CharacterState {
             velocity: Vec3::ZERO,
             is_on_floor: false,
             is_flying: false,
+            inventory_open: false,
         }
     }
 
@@ -51,10 +55,11 @@ impl CharacterState {
         input: &Input,
         mut world: &mut World,
         window: &mut GameWindow,
-        menu_manager: &MenuManager,
+        menu_manager: &mut MenuManager,
         audio_manager: &mut AudioServer,
         resource_manager: &ResourceManager,
         viewmodel_anim: &mut PlayingAnimation,
+        game_data: &GameData,
     ) {
         let ray_result = raycast::cast_ray(camera.position, camera.front, 10.0, &mut world);
         self.target_block = ray_result.hit_position;
@@ -99,6 +104,7 @@ impl CharacterState {
             }
         }
 
+        // toggle flymode
         if input.is_pressed(Key::F as i32) {
             self.is_flying = !self.is_flying;
         }
@@ -113,31 +119,37 @@ impl CharacterState {
 
                 place_aabb.add_offset(place_pos.as_vec3());
                 character_aabb.add_offset(self.position);
+                let selected_block = &self.inventory.slots[self.selected_slot as usize];
 
-                if true { // !place_aabb.intersects(&character_aabb) {
-                    viewmodel_anim.time = 0.0;
-                    world.set_block(
-                        place_pos.x,
-                        place_pos.y,
-                        place_pos.z,
-                        Blocktype::Table, //self.selected_slot + 1,
-                    );
-                    audio_manager.play_sound_flat(resource_manager.place_sound.clone());
-                    game::blocks::blocks::on_place(Blocktype::Stone, place_pos, world);
+                if let Some(selected_block) = selected_block {
+                    let selected_block = selected_block.item_id;
+                    let block = &game_data.items.entries[selected_block as usize].item_data;
 
-                    let cx = ray_result.hit_position.x.div_euclid(CHUNK_WIDTH);
-                    let cz = ray_result.hit_position.z.div_euclid(CHUNK_WIDTH);
+                    if let ItemData::BlockData(blocktype) = block && !place_aabb.intersects(&character_aabb) {
+                        viewmodel_anim.time = 0.0;
+                        world.set_block(
+                            place_pos.x,
+                            place_pos.y,
+                            place_pos.z,
+                            *blocktype,
+                        );
+                        audio_manager.play_sound_flat(resource_manager.place_sound.clone());
+                        game::blocks::blocks::on_place(Blocktype::Stone, place_pos, world);
 
-                    let lx = ray_result.hit_position.x.rem_euclid(CHUNK_WIDTH);
-                    let lz = ray_result.hit_position.z.rem_euclid(CHUNK_WIDTH);
+                        let cx = ray_result.hit_position.x.div_euclid(CHUNK_WIDTH);
+                        let cz = ray_result.hit_position.z.div_euclid(CHUNK_WIDTH);
 
-                    let coord = ChunkCoord::new(cx, cz);
-                    if let Some(mut region) = chunk_region::ChunkRegion::take_chunk_region(&mut world.chunk_manager, &coord) {
-                        if let Some(mut chunk) = world.chunk_manager.get_avl_chunk_mut(cx, cz) {
-                            //lighting_system::update_light(chunk, &mut region, &IVec3::new(lx, ray_result.hit_position.y, lz));
-                            chunk.clear_light();
-                            lighting_system::bake_indirect_light(chunk, &mut region);
-                            ChunkRegion::insert_chunk_region(&mut world.chunk_manager, &coord, region);
+                        let lx = ray_result.hit_position.x.rem_euclid(CHUNK_WIDTH);
+                        let lz = ray_result.hit_position.z.rem_euclid(CHUNK_WIDTH);
+
+                        let coord = ChunkCoord::new(cx, cz);
+                        if let Some(mut region) = chunk_region::ChunkRegion::take_chunk_region(&mut world.chunk_manager, &coord) {
+                            if let Some(mut chunk) = world.chunk_manager.get_avl_chunk_mut(cx, cz) {
+                                //lighting_system::update_light(chunk, &mut region, &IVec3::new(lx, ray_result.hit_position.y, lz));
+                                chunk.clear_light();
+                                lighting_system::bake_indirect_light(chunk, &mut region);
+                                ChunkRegion::insert_chunk_region(&mut world.chunk_manager, &coord, region);
+                            }
                         }
                     }
                 }
@@ -207,6 +219,16 @@ impl CharacterState {
             }
         }
 
+        // inventory
+        if input.is_pressed(Key::E as i32) {
+            self.inventory_open = !self.inventory_open;
+            if self.inventory_open {
+                menu_manager.selected_menu = Menu::Closed;
+            } else {
+                menu_manager.selected_menu = Menu::Inventory;
+            }
+        }
+
         // head rotation
         let (move_x, move_y) = input.get_last_mouse_movement();
         if in_focus {
@@ -218,7 +240,7 @@ impl CharacterState {
         }
 
         // movement
-        let mut speed = 850.0;
+        let mut speed = 650.0;
 
         let movement_input = IVec2::new(
             input.is_down(Key::W as i32) as i32 - input.is_down(Key::S as i32) as i32,
@@ -244,24 +266,31 @@ impl CharacterState {
         if self.is_flying {
             self.velocity.y = vertical_movement_input * 1200.0 * window.delta;
         } else {
-            self.velocity.y += -100.0 * window.delta;
-            if input.is_pressed(Key::Space as i32) {
-                self.velocity.y = 20.0;
+            if !self.is_on_floor {
+                self.velocity.y += -50.0 * window.delta;
+
+            } else {
+                if input.is_down(Key::Space as i32) {
+                    self.velocity.y = 20.0;
+                } else {
+                    self.velocity.y = -0.01;
+                }
             }
         }
 
         let mut final_velocity = (self.velocity.clone() * window.delta);
         
         let collision_result = move_and_collide(world, &self.position, &mut final_velocity, &AABB::HUMANOID);
-        self.is_on_floor = collision_result.is_on_floor;
+        self.is_on_floor = collision_result.grounded;
         self.position += final_velocity;
         
         camera.position = self.position;
         camera.recalculate_view();
 
+        // air drag
         // self.velocity.x *= 0.90;
         // self.velocity.z *= 0.90;
-        // self.velocity.y *= 0.90;
+        self.velocity.y *= 0.999;
 
         // void
         if self.position.y < -10.0 {

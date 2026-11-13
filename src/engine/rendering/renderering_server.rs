@@ -1,16 +1,16 @@
 use std::ops::Add;
 
 use glam::{Mat4, Quat, Vec3};
-use glfw::MouseButton;
+use glfw::{MouseButton, Window};
 
-use crate::engine::{
+use crate::{engine::{
     animation::animation::Bone, block::block_model::BlockModel, core::{input::Input, window::GameWindow}, entity::character_controller::CharacterState, gui::{
-        basic_ui::UIElement, elements::{button::UIButton, check_box::UICheckBox, label::UILabel}, menu_manager::{self, Menu, MenuManager},
-    }, rendering::{self, camera::Camera, chunk_mesher, mesh::{self, BasicMesh}}, resources::{
+        basic_ui::{UI_SCALE, UIElement}, elements::{button::UIButton, check_box::UICheckBox, label::UILabel}, menu_manager::{self, Menu, MenuManager},
+    }, item::item::ItemData, rendering::{self, camera::Camera, chunk_mesher, mesh::{self, BasicMesh}}, resources::{
         resource_manager::{self, ResourceManager},
         texture::*,
     }, world::world::World,
-};
+}, game::{blocks::blocks::Blocktype, data::game_data::GameData}};
 
 pub struct RenderingServer {
     // --- shader uniform locations ---
@@ -154,6 +154,7 @@ impl RenderingServer {
         window: &GameWindow,
         bone: &Bone,
         entity_mesh: &BasicMesh,
+        game_data: &GameData,
     ) {
 
         self.render_solid(resource_manager, camera, world);
@@ -225,7 +226,14 @@ impl RenderingServer {
                 ui_proj.to_cols_array().as_ptr(),
             );
             resource_manager.ui_tex.bind(0);
-            menu_manager.render(resource_manager, world.is_some());
+            menu_manager.render(
+                resource_manager,
+                world.is_some(),
+                character_controller,
+                &self,
+                &game_data,
+                &window,
+            );
             resource_manager.font_tex.bind(0);
 
             gl::Enable(gl::DEPTH_TEST);
@@ -234,32 +242,30 @@ impl RenderingServer {
             if menu_manager.selected_menu == Menu::Closed || menu_manager.selected_menu == Menu::Pause {
                 // hotbar items
                 gl::Disable(gl::DEPTH_TEST);
-                resource_manager.base_shader.bind();
-                resource_manager.tile_atlas.bind(0);
 
-                let slot_size = 100; // 80
+                let slot_size = UI_SCALE as u32;
                 let slot_half = (slot_size / 2) as f32;
-                
-                let view = glam::camera::rh::view::look_at_mat4( //Mat4::IDENTITY.to_cols_array().as_ptr()
-                    Vec3::new(0.0, 0.0, 10.0), // camera position
-                    Vec3::ZERO, // target
-                    Vec3::Y, // up
-                );
-                
-                gl::UniformMatrix4fv(self.base_view_loc, 1, gl::FALSE, view.to_cols_array().as_ptr()); // camera.view
-                gl::UniformMatrix4fv(self.base_proj_loc, 1, gl::FALSE, ui_proj.to_cols_array().as_ptr()); // camera.projection
 
                 for slot in 0..10 {
-                    let block_mesh = &resource_manager.block_meshes[slot];
-                    gl::BindVertexArray(block_mesh.vao);
-                    let model = Mat4::from_scale_rotation_translation(
-                        Vec3::splat(slot_size as f32 * 0.35), // * 0.45 // scale
-                        Quat::from_euler(glam::EulerRot::XYZ, (180.0_f32 + 45.0).to_radians(), 45.0_f32.to_radians(), 0.0), // rotation
-                        Vec3::new(window.width as f32 / 2.0 - slot_half * 10.0 + slot_half + (slot_size * slot) as f32, window.height as f32 - 10.0 - slot_half, 0.0), // position
-                    );
-                    gl::UniformMatrix4fv(self.base_model_loc, 1, gl::FALSE, model.to_cols_array().as_ptr());
-                    gl::DrawArrays(gl::TRIANGLES, 0, block_mesh.vertex_count as i32);
+                    let hotbar_slot = &character_controller.inventory.slots[slot];
+
+                    if let Some(item) = hotbar_slot {
+                        let id = item.item_id;
+                        let block = &game_data.items.entries[id as usize].item_data;
+
+                        if let ItemData::BlockData(blocktype) = block && *blocktype != Blocktype::Air {
+                            self.render_item_ortho(
+                                *blocktype as u32,
+                                window.width as f32 / 2.0 - slot_half * 10.0 + slot_half + (slot_size * slot as u32) as f32,
+                                window.height as f32 - 10.0 - slot_half,
+                                ui_proj,
+                                window,
+                                resource_manager
+                            );
+                        }
+                    }
                 }
+
                 gl::Enable(gl::DEPTH_TEST);
             }
 
@@ -352,5 +358,77 @@ impl RenderingServer {
 
     fn render_ui() {
         
+    }
+
+    pub fn render_item_ortho(
+        &self,
+        item_id: u32,
+        x: f32,
+        y: f32,
+        ui_proj: &Mat4,
+        window: &GameWindow,
+        resource_manager: &ResourceManager,
+    ) {
+        unsafe {
+            
+            let slot_size = UI_SCALE as u32;
+            let slot_half = (slot_size / 2) as f32;
+            let block_mesh = &resource_manager.block_meshes[item_id as usize];
+
+            let w_mid_x = window.width as f32 / 2.0;
+            let w_mid_y = window.height as f32 / 2.0;
+            
+            let view = glam::camera::rh::view::look_at_mat4(
+                Vec3::new(0.0, 0.0, 10.0), // camera position
+                Vec3::ZERO, // target
+                Vec3::Y, // up
+            );
+            
+            let model = Mat4::from_scale_rotation_translation(
+                // scale
+                Vec3::splat(slot_size as f32 * 0.45),
+                // rotation
+                Quat::from_euler(
+                    glam::EulerRot::XYZ,
+
+                    (180.0 + 45.0_f32).to_radians(),
+                    45.0_f32.to_radians(),
+                    0.0
+                ),
+                // position
+                Vec3::new(x, y, 0.0),
+            );
+            
+            resource_manager.base_shader.bind();
+            resource_manager.tile_atlas.bind(0);
+
+            // view
+            gl::UniformMatrix4fv(
+                self.base_view_loc,
+                1,
+                gl::FALSE,
+                view.to_cols_array().as_ptr()
+            );
+            // projection
+            gl::UniformMatrix4fv(
+                self.base_proj_loc,
+                1,
+                gl::FALSE,
+                ui_proj.to_cols_array().as_ptr()
+            );
+            // model
+            gl::UniformMatrix4fv(
+                self.base_model_loc,
+                1,
+                gl::FALSE,
+                model.to_cols_array().as_ptr()
+            );
+            
+            gl::BindVertexArray(block_mesh.vao);
+            
+            //gl::Disable(gl::DEPTH_TEST);
+            gl::DrawArrays(gl::TRIANGLES, 0, block_mesh.vertex_count as i32);
+            //gl::Enable(gl::DEPTH_TEST);
+        }
     }
 }

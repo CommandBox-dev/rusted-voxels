@@ -22,3 +22,5 @@ fastnoise-lite = "1.1.1"
 kira = "0.12"
 toml = "0.9"
 serde = { version = "1", features = ["derive"] }
+strum = "0.26"
+strum_macros = "0.26"

@@ -2,7 +2,7 @@ use std::ops::Div;
 
 use glam::{Mat4, Vec3};
 
-use crate::engine::{block::block_model::BlockModel, physic::aabb::AABB};
+use crate::engine::{block::block_model::{BlockModel, BlockShape::{CubeMesh, Voxel}}, physic::aabb::AABB, rendering::chunk_mesher::NORMAL_LIGHT};
 
 
 pub const VERTICES: [f32; 108] = [
@@ -142,12 +142,32 @@ pub struct BasicModel {
 impl BasicMesh {
     pub fn from_block_model(block_model: &BlockModel) -> Self {
         let mut vertex_data: Vec<f32> = Vec::new();
+        let verts = &block_model.verts;
         let uvs = &block_model.uvs;
 
-        for face in 0..6 {
-            BasicMesh::add_face(&mut vertex_data, &uvs, face);
+        if block_model.shape == Voxel {
+            for face in 0..6 {
+                BasicMesh::add_face(&mut vertex_data, &uvs, face);
+            }
+        } else if block_model.shape == CubeMesh {
+            for vertex in 0..verts.len() / 3 {
+                let total_face = (vertex / 6) % 6;
+                let face = total_face % 6;
+                let part = vertex / 36;
+                let pos = vertex * 3;
+                let uv = (vertex % 6) * 2;
+                // position
+                vertex_data.push(verts[pos + 0] - 0.5);
+                vertex_data.push(verts[pos + 1] - 0.5);
+                vertex_data.push(verts[pos + 2] - 0.5);
+                // uv
+                vertex_data.push(uvs[uv]);
+                vertex_data.push(uvs[uv + 1]);
+                // normal
+                vertex_data.push(NORMAL_LIGHT[face]);
+            }
         }
-
+        
         let (vao, vbo) = BasicMesh::upload_mesh(&vertex_data);
         let vertex_count = (vertex_data.len() / 6) as u32;
 

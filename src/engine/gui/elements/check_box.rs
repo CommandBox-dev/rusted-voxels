@@ -1,4 +1,6 @@
-use crate::engine::gui::basic_ui::{UIAnchor, UIElement, UIModelC, UITransformC};
+use glfw::MouseButton;
+
+use crate::engine::{core::input::Input, gui::basic_ui::{UI_TEX_PIXEL_SIZE, UIAnchor, UIElement, UIModelC, UITransformC}};
 
 
 
@@ -21,20 +23,20 @@ impl UIElement for UICheckBox {
         &mut self.transform
     }
 
-    fn cursor_update(&mut self, mx: u32, my: u32, down: bool) {
-        if down && self.is_hovered(mx, my)
-        {
+    fn update(&mut self, input: &Input) {
+        self.update_hover(input);
+
+        let hovered = self.transform.hovered;
+        let clicked = input.is_mouse_button_pressed(MouseButton::Left as i32);
+        
+        if clicked && self.hovered {
             self.state = !self.state;
             self.create_model();
         }
     }
 
     fn draw(&self) {
-        unsafe {
-            gl::BindVertexArray(self.model.vao);
-            gl::DrawArrays(gl::TRIANGLES, 0, self.model.vertex_count as i32);
-            gl::BindVertexArray(0);
-        }
+        self.model.draw();
     }
 }
 
@@ -58,36 +60,25 @@ impl UICheckBox {
         let w = self.transform.width as f32;
         let h = self.transform.height as f32;
 
-        let tex_pixel_size = 256 as f32;
-
-        let tex_x;
-        let tex_y;
-        let tex_mx;
-        let tex_my;
+        let u;
+        let v;
+        let uw;
+        let vh;
 
         if self.state == true {
-            tex_x = 45 as f32 / tex_pixel_size;
-            tex_y = 2 as f32 / tex_pixel_size;
-            tex_mx = 58 as f32 / tex_pixel_size;
-            tex_my = 15 as f32 / tex_pixel_size;
+            u = 45 as f32 / UI_TEX_PIXEL_SIZE;
+            v = 2 as f32 / UI_TEX_PIXEL_SIZE;
+            uw = 58 as f32 / UI_TEX_PIXEL_SIZE;
+            vh = 15 as f32 / UI_TEX_PIXEL_SIZE;
         } else {
-            tex_x = 45 as f32 / tex_pixel_size;
-            tex_y = 16 as f32 / tex_pixel_size;
-            tex_mx = 58 as f32 / tex_pixel_size;
-            tex_my = 29 as f32 / tex_pixel_size;
+            u = 45 as f32 / UI_TEX_PIXEL_SIZE;
+            v = 16 as f32 / UI_TEX_PIXEL_SIZE;
+            uw = 58 as f32 / UI_TEX_PIXEL_SIZE;
+            vh = 29 as f32 / UI_TEX_PIXEL_SIZE;
         }
 
-        let rect: [f32; 24] = [
-            x + w, y + h, tex_mx, tex_my,
-            x + w, y, tex_mx, tex_y,
-            x, y, tex_x, tex_y,
-            x, y, tex_x, tex_y,
-            x, y + h, tex_x, tex_my,
-            x + w, y + h, tex_mx, tex_my,
-        ];
-
-        self.model.vertex_count = (rect.len() / 4) as u32;
-
+        let rect = UIModelC::get_rect_verts(x, y, w, h, u, v, uw, vh);
+        
         self.model.upload(&rect);
     }
 }

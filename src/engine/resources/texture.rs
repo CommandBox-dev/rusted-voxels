@@ -70,8 +70,9 @@ impl Texture {
 
             gl::TexParameteri(
                 gl::TEXTURE_2D,
-                gl::TEXTURE_MIN_FILTER,
-                gl::NEAREST_MIPMAP_LINEAR as i32,
+                //gl::TEXTURE_MIN_FILTER,
+                gl::LINEAR_MIPMAP_LINEAR,
+                gl::LINEAR_MIPMAP_LINEAR as i32,
             );
 
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);

@@ -8,14 +8,17 @@ pub struct EscapeMenu {
     button_leave: UIButton,
 }
 
-impl EscapeMenu {
+impl EscapeMenu { // TODO: rename pause menu
     pub fn new(window_transform: &UITransformC) -> EscapeMenu {
+        let button_width = 400; // 420
+        let button_height = 90; // 130
+
         Self {
             button_continue: UIButton::new(
                 0,
                 -300,
-                42 * 10,
-                13 * 10,
+                button_width,
+                button_height,
                 String::from("Continue"),
                 AnchorCentered,
                 window_transform,
@@ -23,8 +26,8 @@ impl EscapeMenu {
             button_settings: UIButton::new(
                 0,
                 -100,
-                42 * 10,
-                13 * 10,
+                button_width,
+                button_height,
                 String::from("Settings"),
                 AnchorCentered,
                 window_transform,
@@ -32,8 +35,8 @@ impl EscapeMenu {
             button_world_options: UIButton::new(
                 0,
                 100,
-                42 * 10,
-                13 * 10,
+                button_width,
+                button_height,
                 String::from("World Options"),
                 AnchorCentered,
                 window_transform,
@@ -41,8 +44,8 @@ impl EscapeMenu {
             button_leave: UIButton::new(
                 0,
                 300,
-                42 * 10,
-                13 * 10,
+                button_width,
+                button_height,
                 String::from("Leave"),
                 AnchorCentered,
                 window_transform,

@@ -104,7 +104,7 @@ pub fn build_mesh(chunk: &Chunk, region: &ChunkRegion, block_models: &Vec<BlockM
                     continue;
                 }
 
-                let model = &block_models[block as usize - 1];
+                let model = &block_models[block as usize];
 
                 match model.shape {
 
@@ -190,7 +190,7 @@ fn get_face_mask_cube_mesh(chunk: &Chunk, x: i32, y: i32, z: i32, region: &Chunk
     if right == Blocktype::Air {
         mask |= 1;
     } else  {
-        let neighbor_model = &models[right as usize - 1];
+        let neighbor_model = &models[right as usize];
 
         if neighbor_model.shape == BlockShape::Custom
         || neighbor_model.shape == BlockShape::CubeMesh
@@ -202,7 +202,7 @@ fn get_face_mask_cube_mesh(chunk: &Chunk, x: i32, y: i32, z: i32, region: &Chunk
     if left == Blocktype::Air {
         mask |= 2;
     } else  {
-        let neighbor_model = &models[left as usize - 1];
+        let neighbor_model = &models[left as usize];
 
         if neighbor_model.shape == BlockShape::Custom
         || neighbor_model.shape == BlockShape::CubeMesh
@@ -214,7 +214,7 @@ fn get_face_mask_cube_mesh(chunk: &Chunk, x: i32, y: i32, z: i32, region: &Chunk
     if top == Blocktype::Air {
         mask |= 4;
     } else  {
-        let neighbor_model = &models[top as usize - 1];
+        let neighbor_model = &models[top as usize];
 
         if neighbor_model.shape == BlockShape::Custom
         || neighbor_model.shape == BlockShape::CubeMesh
@@ -226,7 +226,7 @@ fn get_face_mask_cube_mesh(chunk: &Chunk, x: i32, y: i32, z: i32, region: &Chunk
     if bottom == Blocktype::Air {
         mask |= 8;
     } else  {
-        let neighbor_model = &models[bottom as usize - 1];
+        let neighbor_model = &models[bottom as usize];
 
         if neighbor_model.shape == BlockShape::Custom
         || neighbor_model.shape == BlockShape::CubeMesh
@@ -238,7 +238,7 @@ fn get_face_mask_cube_mesh(chunk: &Chunk, x: i32, y: i32, z: i32, region: &Chunk
     if front == Blocktype::Air {
         mask |= 16;
     } else  {
-        let neighbor_model = &models[front as usize - 1];
+        let neighbor_model = &models[front as usize];
 
         if neighbor_model.shape == BlockShape::Custom
         || neighbor_model.shape == BlockShape::CubeMesh
@@ -250,7 +250,7 @@ fn get_face_mask_cube_mesh(chunk: &Chunk, x: i32, y: i32, z: i32, region: &Chunk
     if back == Blocktype::Air {
         mask |= 32;
     } else  {
-        let neighbor_model = &models[back as usize - 1];
+        let neighbor_model = &models[back as usize];
 
         if neighbor_model.shape == BlockShape::Custom
         || neighbor_model.shape == BlockShape::CubeMesh
@@ -297,7 +297,7 @@ fn get_face_mask_voxel(chunk: &Chunk, x: i32, y: i32, z: i32, region: &ChunkRegi
     if right == Blocktype::Air {
         mask |= 1;
     } else  {
-        let model = &models[right as usize - 1];
+        let model = &models[right as usize];
 
         if model.shape == BlockShape::Empty
         || model.shape == BlockShape::Custom
@@ -310,7 +310,7 @@ fn get_face_mask_voxel(chunk: &Chunk, x: i32, y: i32, z: i32, region: &ChunkRegi
     if left == Blocktype::Air {
         mask |= 2;
     } else  {
-        let model = &models[left as usize - 1];
+        let model = &models[left as usize];
 
         if model.shape == BlockShape::Empty
         || model.shape == BlockShape::Custom
@@ -323,7 +323,7 @@ fn get_face_mask_voxel(chunk: &Chunk, x: i32, y: i32, z: i32, region: &ChunkRegi
     if top == Blocktype::Air {
         mask |= 4;
     } else  {
-        let model = &models[top as usize - 1];
+        let model = &models[top as usize];
 
         if model.shape == BlockShape::Empty
         || model.shape == BlockShape::Custom
@@ -336,7 +336,7 @@ fn get_face_mask_voxel(chunk: &Chunk, x: i32, y: i32, z: i32, region: &ChunkRegi
     if bottom == Blocktype::Air {
         mask |= 8;
     } else  {
-        let model = &models[bottom as usize - 1];
+        let model = &models[bottom as usize];
 
         if model.shape == BlockShape::Empty
         || model.shape == BlockShape::Custom
@@ -349,7 +349,7 @@ fn get_face_mask_voxel(chunk: &Chunk, x: i32, y: i32, z: i32, region: &ChunkRegi
     if front == Blocktype::Air {
         mask |= 16;
     } else  {
-        let model = &models[front as usize - 1];
+        let model = &models[front as usize];
 
         if model.shape == BlockShape::Empty
         || model.shape == BlockShape::Custom
@@ -362,7 +362,7 @@ fn get_face_mask_voxel(chunk: &Chunk, x: i32, y: i32, z: i32, region: &ChunkRegi
     if back == Blocktype::Air {
         mask |= 32;
     } else  {
-        let model = &models[back as usize - 1];
+        let model = &models[back as usize];
 
         if model.shape == BlockShape::Empty
         || model.shape == BlockShape::Custom

@@ -29,6 +29,7 @@ impl TerrainGenerator for MengerSponge {
     }
 }
 
+#[inline(always)]
 fn get_menger(mut x: i32, mut y: i32, mut z: i32) -> bool {
     for i in 0..6 {
         let xm = x % 3 == 1;

@@ -1,9 +1,10 @@
 use glam::IVec3;
+use strum_macros::EnumIter;
 
 use crate::{engine::{block::block::Block, world::world::World}, game::blocks::blocks};
 
 #[repr(u16)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, EnumIter)]
 pub enum Blocktype {
     Air,
     Void,

@@ -9,10 +9,10 @@ use crate::{engine::{
         basic_ui::{
             UIAnchor::{AnchorBottom, AnchorBottomLeft, AnchorCentered, AnchorRight, AnchorTop, AnchorTopLeft, AnchorTopRight}, UIElement, UITransformC,
         }, menu_manager::Menu::Closed,
-    }, physic::aabb::AABB, resources::{
+    }, physic::aabb::AABB, rendering::renderering_server::{self, RenderingServer}, resources::{
         resource_manager::{self, ResourceManager}, texture::{self, AtlasTile, UV},
     }, world::{self, world::World},
-}, game::menus::{debug_screen::DebugScreen, game_hud::GameHUD, main_menu::MainMenu, pause_menu::EscapeMenu, world_loading_screen::WorldLoadingScreenMenu}};
+}, game::{data::game_data::GameData, menus::{debug_screen::DebugScreen, game_hud::GameHUD, main_menu::MainMenu, menu_inventory::PlayerInventory, pause_menu::EscapeMenu, world_loading_screen::WorldLoadingScreenMenu}}};
 use crate::engine::gui::elements::{label::UILabel, tex_rect::UITexturedRect, button::UIButton};
 
 #[derive(PartialEq, Eq, Debug)]
@@ -25,9 +25,8 @@ pub enum Menu {
     WorldGenOptions,
     WorldExtraOptions,
     WorldLoadingScreen,
+    Inventory,
 }
-
-pub trait UIMenu {}
 
 pub struct MenuManager {
     pub selected_menu: Menu,
@@ -38,10 +37,11 @@ pub struct MenuManager {
     world_loading_screen: WorldLoadingScreenMenu,
     game_hud: GameHUD,
     debug_screen: DebugScreen,
+    inventory: PlayerInventory,
 }
 
 impl MenuManager {
-    pub fn new(window: &GameWindow) -> Self {
+    pub fn new(window: &GameWindow, character_controller: &CharacterState) -> Self {
         let window_transform = UITransformC::new(0, 0, window.width, window.height, AnchorTopLeft);
 
         Self {
@@ -52,6 +52,7 @@ impl MenuManager {
             world_loading_screen: WorldLoadingScreenMenu::new(&window_transform),
             game_hud: GameHUD::new(&window_transform),
             debug_screen: DebugScreen::new(&window_transform),
+            inventory: PlayerInventory::new(&window_transform, &character_controller.inventory.slots),
         }
     }
 
@@ -73,7 +74,7 @@ impl MenuManager {
         &mut self,
         input: &Input,
         window: &mut GameWindow,
-        character_controller: &CharacterState,
+        character_controller: &mut CharacterState,
         world: Option<&World>
     ) {
 
@@ -94,6 +95,8 @@ impl MenuManager {
             // Possible panic!!!
             Menu::WorldLoadingScreen => self.world_loading_screen.update(if world.is_some() {world.unwrap().chunk_manager.chunks_loaded} else {0}, &world.unwrap().chunk_manager),
 
+            Menu::Inventory => self.inventory.update(&mut character_controller.inventory, input),
+
             _ => {}
         }
         if input.is_pressed(Key::Escape as i32) {
@@ -111,7 +114,15 @@ impl MenuManager {
         }
     }
 
-    pub fn render(&self, resource_manager: &ResourceManager, in_world: bool) {
+    pub fn render(
+        &self,
+        resource_manager: &ResourceManager,
+        in_world: bool,
+        character_controller: &CharacterState,
+        rendering_server: &RenderingServer,
+        game_data: &GameData,
+        window: &GameWindow,
+    ) {
 
         if self.selected_menu == Menu::Closed || self.selected_menu == Menu::Pause {
             self.game_hud.draw(resource_manager);
@@ -125,6 +136,15 @@ impl MenuManager {
             Menu::Pause => self.escape_menu.render(resource_manager),
             
             Menu::WorldLoadingScreen => self.world_loading_screen.draw(resource_manager),
+
+            Menu::Inventory => self.inventory.draw(
+                character_controller,
+                resource_manager,
+                rendering_server,
+                game_data,
+                &window.ui_projection,
+                &window,
+            ),
             
             _ => {},
         }

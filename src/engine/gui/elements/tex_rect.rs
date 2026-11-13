@@ -17,8 +17,6 @@ impl UIElement for UITexturedRect {
         &mut self.transform
     }
 
-    fn cursor_update(&mut self, mx: u32, my: u32, down: bool) {}
-
     fn draw(&self) {
         unsafe {
             gl::BindVertexArray(self.model.vao);
@@ -48,21 +46,12 @@ impl UITexturedRect {
 
         let tex_pixel_size = 256 as f32;
 
-        let tex_x = self.uv.x;
-        let tex_y = self.uv.y;
-        let tex_mx = self.uv.x_max;
-        let tex_my = self.uv.y_max;
+        let u = self.uv.x;
+        let v = self.uv.y;
+        let uw = self.uv.x_max;
+        let vh = self.uv.y_max;
 
-        let rect: [f32; 24] = [
-            x + w, y + h, tex_mx, tex_my,
-            x + w, y, tex_mx, tex_y,
-            x, y, tex_x, tex_y,
-            x, y, tex_x, tex_y,
-            x, y + h, tex_x, tex_my,
-            x + w, y + h, tex_mx, tex_my,
-        ];
-
-        self.model.vertex_count = (rect.len() / 4) as u32;
+        let rect = UIModelC::get_rect_verts(x, y, w, h, u, v, uw, vh);
 
         self.model.upload(&rect);
     }

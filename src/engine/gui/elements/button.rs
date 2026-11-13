@@ -1,11 +1,14 @@
-use crate::engine::gui::{basic_ui::{UIAnchor::{self, *}, UIElement, UIModelC, UITransformC}, elements::label::UILabel};
+use glfw::MouseButton;
+
+use crate::engine::{core::input::{self, Input}, gui::{basic_ui::{UI_TEX_PIXEL_SIZE, UIAnchor::{self, *}, UIElement, UIModelC, UITransformC}, elements::label::UILabel, layout::panel::get_dyn_textured_rect}, resources::texture::UV};
 
 pub struct UIButton {
     transform: UITransformC,
     model: UIModelC,
     text: UILabel,
-    pub hovered: bool,
-    pub pressed: bool,
+    pressed: bool,
+    released: bool,
+    down: bool,
 }
 
 impl UIElement for UIButton {
@@ -17,25 +20,27 @@ impl UIElement for UIButton {
         &mut self.transform
     }
 
-    fn cursor_update(&mut self, mx: u32, my: u32, down: bool) {
-        if down && self.is_hovered(mx, my) 
-        {
-            self.hovered = true;
+    fn update(&mut self, input: &Input) {
+        self.update_hover(input);
+
+        let hovered = self.transform.hovered;
+        let clicked = input.is_mouse_button_down(MouseButton::Left as i32);
+
+        self.pressed = false;
+        self.released = false;
+
+        if clicked && !self.down && hovered {
             self.pressed = true;
-            //self.create_model();
-        } else {
-            self.hovered = false;
-            self.pressed = false;
-            //self.create_model();
         }
+        else if !clicked && self.down {
+            self.released = true;
+        }
+
+        self.down = clicked && hovered;
     }
 
     fn draw(&self) {
-        unsafe {
-            gl::BindVertexArray(self.model.vao);
-            gl::DrawArrays(gl::TRIANGLES, 0, self.model.vertex_count as i32);
-            gl::BindVertexArray(0);
-        }
+        self.model.draw();
     }
 }
 
@@ -50,51 +55,98 @@ impl UIButton {
             transform,
             model: UIModelC::new(),
             text: label,
-            hovered: false,
             pressed: false,
+            released: false,
+            down: false,
         };
         button.create_model();
         button
     }
 
     fn create_model(&mut self) {
+        let tex_pixel_size = UI_TEX_PIXEL_SIZE;
+        
+        // top left corner
+        let tl_corner = UV::new(
+            112 as f32 / tex_pixel_size,
+            80 as f32 / tex_pixel_size,
+            116 as f32 / tex_pixel_size,
+            84 as f32 / tex_pixel_size,
+        );
+        // top right corner
+        let tr_corner = UV::new(
+            124 as f32 / tex_pixel_size,
+            80 as f32 / tex_pixel_size,
+            128 as f32 / tex_pixel_size,
+            84 as f32 / tex_pixel_size,
+        );
+        // bottom right corner
+        let br_corner = UV::new(
+            124 as f32 / tex_pixel_size,
+            92 as f32 / tex_pixel_size,
+            128 as f32 / tex_pixel_size,
+            96 as f32 / tex_pixel_size,
+        );
+        // bottom left corner
+        let bl_corner = UV::new(
+            112 as f32 / tex_pixel_size,
+            92 as f32 / tex_pixel_size,
+            116 as f32 / tex_pixel_size,
+            96 as f32 / tex_pixel_size,
+        );
+        // top side
+        let t_side = UV::new(
+            117 as f32 / tex_pixel_size,
+            80 as f32 / tex_pixel_size,
+            123 as f32 / tex_pixel_size,
+            84 as f32 / tex_pixel_size,
+        );
+        // bottom side
+        let b_side = UV::new(
+            117 as f32 / tex_pixel_size,
+            92 as f32 / tex_pixel_size,
+            123 as f32 / tex_pixel_size,
+            96 as f32 / tex_pixel_size,
+        );
+        // right side
+        let r_side = UV::new(
+            112 as f32 / tex_pixel_size,
+            85 as f32 / tex_pixel_size,
+            116 as f32 / tex_pixel_size,
+            91 as f32 / tex_pixel_size,
+        );
+        // left side
+        let l_side = UV::new(
+            124 as f32 / tex_pixel_size,
+            85 as f32 / tex_pixel_size,
+            128 as f32 / tex_pixel_size,
+            91 as f32 / tex_pixel_size,
+        );
+        // center pice
+        let center = UV::new(
+            117 as f32 / tex_pixel_size,
+            85 as f32 / tex_pixel_size,
+            123 as f32 / tex_pixel_size,
+            91 as f32 / tex_pixel_size,
+        );
 
-        let x = self.transform.visual_x as f32;
-        let y = self.transform.visual_y as f32;
-        let w = self.transform.width as f32;
-        let h = self.transform.height as f32;
+        let verts = get_dyn_textured_rect(
+            self.transform.visual_x as f32,
+            self.transform.visual_y as f32,
+            self.transform.width as f32,
+            self.transform.height as f32,
+            &tl_corner,
+            &tr_corner,
+            &br_corner,
+            &bl_corner,
+            &t_side,
+            &b_side,
+            &r_side,
+            &l_side,
+            &center,
+        );
 
-        let tex_pixel_size = 256 as f32;
-
-        let tex_x;
-        let tex_y;
-        let tex_mx;
-        let tex_my;
-
-        if self.pressed {
-            tex_x = 2 as f32 / tex_pixel_size;
-            tex_y = 16 as f32 / tex_pixel_size;
-            tex_mx = 44 as f32 / tex_pixel_size;
-            tex_my = 29 as f32 / tex_pixel_size;
-        } else {
-            tex_x = 2 as f32 / tex_pixel_size;
-            tex_y = 2 as f32 / tex_pixel_size;
-            tex_mx = 44 as f32 / tex_pixel_size;
-            tex_my = 15 as f32 / tex_pixel_size;
-        }
-
-        let rect: [f32; 24] = [
-            x + w, y + h, tex_mx, tex_my,
-            x + w, y, tex_mx, tex_y,
-            x, y, tex_x, tex_y,
-            x, y, tex_x, tex_y,
-            x, y + h, tex_x, tex_my,
-            x + w, y + h, tex_mx, tex_my,
-        ];
-
-        self.model.vertex_count = (rect.len() / 4) as u32;
-
-        self.model.upload(&rect);
+        self.model.upload(&verts);
     }
 
     pub fn draw_text(&self) {
@@ -106,4 +158,22 @@ impl UIButton {
         self.text.realign(&self.transform);
         self.create_model();
     }
+
+    pub fn pressed(&self) -> bool {
+        self.pressed
+    }
+
+    pub fn released(&self) -> bool  {
+        self.released
+    }
+
+    pub fn activated(&self) -> bool {
+        self.hovered() && self.released
+    }
+
+    pub fn down(&self) -> bool  {
+        self.down
+    }
+
+
 }

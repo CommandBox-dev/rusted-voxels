@@ -34,7 +34,7 @@ impl GameWindow {
         // glfw initialization
         let mut glfw = glfw::init(glfw::fail_on_errors).unwrap();
 
-        #[cfg(target_os = "macos")]
+        // #[cfg(target_os = "macos")]
         glfw.window_hint(glfw::WindowHint::OpenGlForwardCompat(true));
         glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
         glfw.window_hint(glfw::WindowHint::OpenGlProfile(

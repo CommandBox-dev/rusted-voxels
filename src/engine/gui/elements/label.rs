@@ -16,15 +16,9 @@ impl UIElement for UILabel {
     fn get_mut_transform(&mut self) -> &mut UITransformC {
         &mut self.transform
     }
-
-    fn cursor_update(&mut self, mx: u32, my: u32, down: bool) {}
-
+    
     fn draw(&self) {
-        unsafe {
-            gl::BindVertexArray(self.model.vao);
-            gl::DrawArrays(gl::TRIANGLES, 0, self.model.vertex_count as i32);
-            gl::BindVertexArray(0);
-        }
+        self.model.draw();
     }
 }
 
@@ -45,54 +39,16 @@ impl UILabel {
     pub fn build_mesh(&mut self) {
 
         let text = &self.text;
-        let mut mesh: Vec<f32> = Vec::new();
 
-        let tex_width = 128;
-        let char_tex_aspect_x = 7.0 / tex_width as f32;
-        let char_tex_aspect_y = 16.0 / tex_width as f32;
-        let char_width_y = 8.0 / tex_width as f32;
-        let char_tex_offset_y = 9.0 / tex_width as f32;
+        self.transform.width = UILabel::get_label_width(&self.text);
+        self.transform.height = 25.0 as u32;
 
-        let h: f32 = 25.0;
-        let w: f32 = 25.0;
-
-        let mut total_width: f32 = 0.0;
-        for c in text.chars() {
-            if c.is_ascii() && c >= '!' {
-                let x: f32 = self.transform.visual_x as f32 + total_width;
-                let y: f32 = self.transform.visual_y as f32;
-
-                // the font atlas starts at ascii char '!'
-                let l = c as u8 - b'!';
-                let col = (l % 18) as f32;
-                let row = (l / 18) as f32;
-
-                let tex_x: f32 = col * char_tex_aspect_x;
-                let tex_y: f32 = row * char_tex_aspect_y + char_tex_aspect_y - char_tex_offset_y;
-                let tex_mx: f32 = tex_x + char_tex_aspect_x;
-                let tex_my: f32 = tex_y + char_width_y;
-
-                let rect: [f32; 24] = [
-                    x + w, y + h, tex_mx, tex_my,
-                    x + w, y, tex_mx, tex_y,
-                    x, y, tex_x, tex_y,
-                    x, y, tex_x, tex_y,
-                    x, y + h, tex_x, tex_my,
-                    x + w, y + h, tex_mx, tex_my,
-                ];
-
-                for f in rect {
-                    mesh.push(f);
-                }
-            }
-            total_width += UILabel::get_char_width(c) * w;
-        }
-
-        self.transform.width = total_width as u32;
-        self.transform.height = h as u32;
-        
-        self.model.vertex_count = (mesh.len() / 4) as u32;
-
+        let mesh = create_mesh_from_str(
+            &self.text,
+            self.transform.visual_x as f32,
+            self.transform.visual_y as f32,
+        );
+    
         self.model.upload(&mesh);
     }
 
@@ -137,4 +93,44 @@ impl UILabel {
         self.text = text;
         self.build_mesh();
     }
+}
+
+#[must_use]
+pub fn create_mesh_from_str(text: &str, x: f32, y: f32) -> Vec<f32> {
+    let mut mesh: Vec<f32> = Vec::new();
+
+    let tex_width = 128;
+    let char_tex_aspect_x = 7.0 / tex_width as f32;
+    let char_tex_aspect_y = 16.0 / tex_width as f32;
+    let char_width_y = 8.0 / tex_width as f32;
+    let char_tex_offset_y = 9.0 / tex_width as f32;
+
+    let h: f32 = 25.0;
+    let w: f32 = 25.0;
+
+    let mut total_width: f32 = 0.0;
+    for c in text.chars() {
+        if c.is_ascii() && c >= '!' {
+            let x: f32 = x + total_width;
+            let y: f32 = y;
+
+            // the font atlas starts at ascii char '!'
+            let l = c as u8 - b'!';
+            let col = (l % 18) as f32;
+            let row = (l / 18) as f32;
+
+            let u: f32 = col * char_tex_aspect_x;
+            let v: f32 = row * char_tex_aspect_y + char_tex_aspect_y - char_tex_offset_y;
+            let uw: f32 = u + char_tex_aspect_x;
+            let vh: f32 = v + char_width_y;
+
+            let rect = UIModelC::get_rect_verts(x, y, w, h, u, v, uw, vh);
+
+            for f in rect {
+                mesh.push(f);
+            }
+        }
+        total_width += UILabel::get_char_width(c) * w;
+    }
+    mesh
 }

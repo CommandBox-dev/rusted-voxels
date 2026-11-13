@@ -1,7 +1,9 @@
+use crate::engine::item::item::ItemInstance;
+
 
 #[derive(Debug, Clone)]
 pub struct Container {
-    pub slots: Vec<Option<ItemStack>>,
+    pub slots: Vec<Option<ItemInstance>>,
 }
 
 impl Container {
@@ -21,11 +23,11 @@ impl Container {
     }
 
     #[inline(always)]
-    pub fn set_item(&mut self, slot: u32, item: Option<ItemStack>) {
+    pub fn set_item(&mut self, slot: u32, item: Option<ItemInstance>) {
         self.slots[slot as usize] = item;
     }
 
-    pub fn add_item(&mut self, item: &ItemStack) -> bool {
+    pub fn add_item(&mut self, item: &ItemInstance) -> bool {
 
         let mut first_empty: Option<usize> = None;
 
@@ -57,19 +59,8 @@ impl Container {
     pub fn count_item(&mut self) {
         todo!();
     }
-}
 
-#[derive(Debug, Clone)]
-pub struct ItemStack {
-    item_id: u32,
-    quantity: u32,
-}
-
-impl ItemStack {
-    pub fn new(item: u32, quantity: u32) -> Self {
-        Self {
-            item_id: item,
-            quantity,
-        }
+    pub fn take_item(&mut self, slot: u32) -> Option<ItemInstance> {
+        self.slots[slot as usize].take()
     }
 }

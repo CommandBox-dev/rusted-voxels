@@ -1,4 +1,4 @@
-use crate::engine::{entity::character_controller::CharacterState, gui::{basic_ui::{UIAnchor::{AnchorBottom, AnchorCentered, AnchorTopRight}, UIElement, UITransformC}, elements::tex_rect::UITexturedRect}, resources::{resource_manager::ResourceManager, texture::UV}};
+use crate::engine::{entity::character_controller::CharacterState, gui::{basic_ui::{UIAnchor::{self, AnchorBottom, AnchorCentered, AnchorTopRight}, UIElement, UITransformC}, elements::{container_grid::UIContainerGrid, tex_rect::UITexturedRect}}, resources::{resource_manager::ResourceManager, texture::UV}};
 
 pub struct GameHUD {
     crosshair: UITexturedRect,
@@ -15,19 +15,16 @@ impl GameHUD {
         let slot_size = 100; // 90 // 80
         let slot_half = slot_size / 2;
 
-        // TODO: remove all "mid" from UIAnchor names, AnchorBottom -> AnchorBottom
-
         Self {
             crosshair: UITexturedRect::new(0, 0, 40, 40, UV::new(0.0, 0.0, 1.0, 1.0), AnchorCentered, window_transform),
 
-            //hotbar: UITexturedRect::new(0, -10, slot_size * 10, slot_size, UV::new(96.0 / tex_size, 0.0 / tex_size, tex_size / tex_size, 16.0 / tex_size), AnchorBottom, window_transform),
-            hotbar: UITexturedRect::new(0, -10, slot_size * 10, slot_size, UV::new(27.0 / tex_size, 126.0 / tex_size, 247.0 / tex_size, 148.0 / tex_size), AnchorBottom, window_transform),
+            hotbar: UITexturedRect::new(0, -10, slot_size * 10, slot_size, UV::new(96.0 / tex_size, 0.0 / tex_size, tex_size / tex_size, 16.0 / tex_size), AnchorBottom, window_transform),
+            //hotbar: UITexturedRect::new(0, -10, slot_size * 10, slot_size, UV::new(27.0 / tex_size, 126.0 / tex_size, 247.0 / tex_size, 148.0 / tex_size), AnchorBottom, window_transform),
 
             selected_slot: UITexturedRect::new(-(4 * slot_size as i32 + slot_half as i32), -10, slot_size, slot_size, UV::new(96.0 / tex_size, 16.0 / tex_size, 112.0 / tex_size, 32.0 / tex_size), AnchorBottom, window_transform),
             special_slot_one: UITexturedRect::new(-(slot_half as i32 * 3), (slot_half) as i32, slot_size, slot_size, UV::new(112.0 / tex_size, 16.0 / tex_size, 128.0 / tex_size, 32.0 / tex_size), AnchorTopRight, window_transform),
             special_slot_two: UITexturedRect::new(-(slot_half as i32), (slot_size + slot_half) as i32, slot_size, slot_size, UV::new(112.0 / tex_size, 16.0 / tex_size, 128.0 / tex_size, 32.0 / tex_size), AnchorTopRight, window_transform),
             health_bar: UITexturedRect::new(-(5 * slot_half as i32), -(10 + slot_size as i32), slot_size * 5, slot_size, UV::new(98.0 / tex_size, 36.0 / tex_size, 110.0 / tex_size, 47.0 / tex_size), AnchorBottom, window_transform),
-            
         }
     }
 
